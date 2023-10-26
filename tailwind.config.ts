@@ -1,5 +1,6 @@
 import { join } from 'path'
 import type { Config } from 'tailwindcss'
+import forms from '@tailwindcss/forms'
 import { skeleton } from '@skeletonlabs/tw-plugin'
 
 const config = {
@@ -15,8 +16,9 @@ const config = {
 		extend: {}
 	},
 	plugins: [
+		forms,
 		skeleton({
-			themes: { preset: ['skeleton'] }
+			themes: { preset: [{ name: 'skeleton', enhancements: true }] }
 		})
 	]
 } satisfies Config
