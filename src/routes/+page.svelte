@@ -1,15 +1,11 @@
 <script>
+	import Banner from '@/components/banner.svelte'
 </script>
 
 <body class="h-full w-full min-h-screen flex bg-transparent">
 	<div class="space-y-4 m-auto p-8">
-		<div class="h1 flex select-none items-center justify-start gap-1">
-			<div
-				class="text-on-secondary-token variant-filled-secondary p-1 font-bold"
-			>
-				KNIGHT
-			</div>
-			<div class="text-secondary-500">MEET</div>
+		<div class="h1">
+			<Banner />
 		</div>
 		<p class="text">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
 		<section
