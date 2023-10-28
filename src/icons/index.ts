@@ -9,3 +9,6 @@ export const Camera = Camera__SvelteComponent_
 
 import Close__SvelteComponent_ from './close.svelte'
 export const Close = Close__SvelteComponent_
+
+import User__SvelteComponent_ from './user.svelte'
+export const User = User__SvelteComponent_
