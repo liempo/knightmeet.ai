@@ -18,6 +18,7 @@ export const actions = {
 			console.log('Using test token for channel', channel)
 			return {
 				body: {
+					uid,
 					appId,
 					channel,
 					token: env.VITE_AGORA_TEST_TOKEN
@@ -37,6 +38,7 @@ export const actions = {
 
 		return {
 			body: {
+				uid,
 				appId,
 				channel,
 				token

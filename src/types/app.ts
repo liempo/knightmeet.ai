@@ -6,6 +6,7 @@ export type User = {
 }
 
 export type MeetingMetadata = {
+	uid: number
 	appId: string
 	channel: string
 	token: string

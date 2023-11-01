@@ -1,16 +1,15 @@
 <script lang="ts">
-	import { userStore } from '@/lib/stores'
-	import type { MeetingMetadata } from '@/types/app'
-
+	import { page } from '$app/stores'
 	import Setup from './setup.svelte'
 	import Conference from './conference.svelte'
 
-	export let metadata: MeetingMetadata | undefined
-	$: console.log(metadata)
+	import type { MeetingMetadata } from '@/types/app'
+	let metadata: MeetingMetadata
+	$: metadata = $page.form?.body
 </script>
 
 {#if metadata}
-	<Conference />
+	<Conference {metadata} />
 {:else}
 	<Setup />
 {/if}

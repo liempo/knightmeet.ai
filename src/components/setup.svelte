@@ -1,17 +1,19 @@
 <script lang="ts">
-	import { onMount } from 'svelte'
+	import { onDestroy, onMount } from 'svelte'
+	import { enhance } from '$app/forms'
+	import { page } from '$app/stores'
+
 	import { Microphone, Camera } from '@/icons'
-	import { userStore } from '@/lib/stores'
 	import { getInitials } from '@/lib/utils'
+	import type { User } from '@/types/app'
 
 	import { Avatar } from '@skeletonlabs/skeleton'
 
-	import type { User } from '@/types/app'
 	import AgoraRTC, {
 		type ILocalAudioTrack,
 		type ILocalVideoTrack
 	} from 'agora-rtc-sdk-ng'
-	import { enhance } from '$app/forms'
+	import { userStore } from '@/lib/stores'
 
 	/*  Agora objects from Meeting Component */
 	let localAudio: ILocalAudioTrack | null = null
@@ -20,27 +22,33 @@
 	/* Current user preferences */
 	let localUser: User = {
 		name: '',
-		audio: true,
+		audio: false,
 		video: true
 	}
 
-	onMount(async () => {
-		/* Create local tracks before setup and call */
-		localAudio = await AgoraRTC.createMicrophoneAudioTrack()
-		localVideo = await AgoraRTC.createCameraVideoTrack()
+	page.subscribe((p) => {
+		if (p.form?.body)
+			userStore.set({
+				...localUser,
+				id: p.form.body.uid
+			})
 	})
 
 	$: {
 		localAudio?.setEnabled(localUser.audio)
 		localVideo?.setEnabled(localUser.video)
-
-		/* Play local video preview if localUser.id is not set */
-		if (!localUser.id) {
-			localUser.video
-				? localVideo?.play('localVideoPreview')
-				: localVideo?.stop()
-		}
+		localUser.video ? localVideo?.play('localVideoPreview') : localVideo?.stop()
 	}
+
+	onMount(async () => {
+		localAudio = await AgoraRTC.createMicrophoneAudioTrack()
+		localVideo = await AgoraRTC.createCameraVideoTrack()
+	})
+
+	onDestroy(() => {
+		localAudio?.close()
+		localVideo?.close()
+	})
 </script>
 
 <div class="h-full flex">
@@ -61,7 +69,6 @@
 			>
 				<track kind="captions" />
 			</video>
-
 			{#if !localUser.video && !localVideo?.isPlaying}
 				<Avatar
 					class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
@@ -74,6 +81,7 @@
 		<form
 			method="POST"
 			class="flex gap-2 w-full items-center justify-between"
+			use:enhance
 		>
 			<input
 				name="name"
@@ -100,6 +108,7 @@
 			<button
 				class="btn variant-filled-primary"
 				type="submit"
+				disabled={!localUser.name}
 			>
 				Join
 			</button>
