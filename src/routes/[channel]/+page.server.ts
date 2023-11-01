@@ -8,7 +8,7 @@ const { RtcTokenBuilder, RtcRole } = pkg
 
 export const actions = {
 	default: async ({ params }) => {
-		const channel = params.meet
+		const channel = params.channel
 		const appId = env.VITE_AGORA_APP_ID
 		const appCertificate = env.VITE_AGORA_APP_CERTIFICATE
 		const uid = generateUID()
