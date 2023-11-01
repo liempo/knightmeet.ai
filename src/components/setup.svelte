@@ -1,17 +1,21 @@
 <script lang="ts">
-	import { Microphone, Camera, User as UserIcon } from '@/icons'
-	import type { User } from '@/types/app'
+	import { onMount } from 'svelte'
+	import { Microphone, Camera } from '@/icons'
 	import { userStore } from '@/lib/stores'
-	import { generateUID, getInitials } from '@/lib/utils'
+	import { getInitials } from '@/lib/utils'
 
 	import { Avatar } from '@skeletonlabs/skeleton'
 
-	import type { ILocalAudioTrack, ILocalVideoTrack } from 'agora-rtc-sdk-ng'
+	import type { User } from '@/types/app'
+	import AgoraRTC, {
+		type ILocalAudioTrack,
+		type ILocalVideoTrack
+	} from 'agora-rtc-sdk-ng'
+	import { enhance } from '$app/forms'
 
 	/*  Agora objects from Meeting Component */
-	export let localAudio: ILocalAudioTrack | null = null
-	export let localVideo: ILocalVideoTrack | null = null
-	let previewVideoRef: HTMLVideoElement | null = null
+	let localAudio: ILocalAudioTrack | null = null
+	let localVideo: ILocalVideoTrack | null = null
 
 	/* Current user preferences */
 	let localUser: User = {
@@ -20,13 +24,21 @@
 		video: true
 	}
 
+	onMount(async () => {
+		/* Create local tracks before setup and call */
+		localAudio = await AgoraRTC.createMicrophoneAudioTrack()
+		localVideo = await AgoraRTC.createCameraVideoTrack()
+	})
+
 	$: {
 		localAudio?.setEnabled(localUser.audio)
 		localVideo?.setEnabled(localUser.video)
 
 		/* Play local video preview if localUser.id is not set */
-		if (!localUser.id && previewVideoRef) {
-			localUser.video ? localVideo?.play(previewVideoRef) : localVideo?.stop()
+		if (!localUser.id) {
+			localUser.video
+				? localVideo?.play('localVideoPreview')
+				: localVideo?.stop()
 		}
 	}
 </script>
@@ -46,7 +58,6 @@
 				autoplay={true}
 				muted={true}
 				id="localVideoPreview"
-				bind:this={previewVideoRef}
 			>
 				<track kind="captions" />
 			</video>
@@ -60,8 +71,12 @@
 			{/if}
 		</div>
 
-		<div class="flex gap-2 w-full items-center justify-between">
+		<form
+			method="POST"
+			class="flex gap-2 w-full items-center justify-between"
+		>
 			<input
+				name="name"
 				bind:value={localUser.name}
 				type="text"
 				placeholder="Enter your name"
@@ -84,14 +99,10 @@
 
 			<button
 				class="btn variant-filled-primary"
-				on:click={() => {
-					localUser.id = generateUID()
-					if (localUser.name === '') localUser.name = 'Guest'
-					userStore.set(localUser)
-				}}
+				type="submit"
 			>
 				Join
 			</button>
-		</div>
+		</form>
 	</div>
 </div>

@@ -4,3 +4,9 @@ export type User = {
 	audio: boolean
 	video: boolean
 }
+
+export type MeetingMetadata = {
+	appId: string
+	channel: string
+	token: string
+}
