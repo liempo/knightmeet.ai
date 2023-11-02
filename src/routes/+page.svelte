@@ -8,6 +8,10 @@
 	$: isChannelValid = validateChannelName(channel)
 </script>
 
+<svelte:head>
+	<title>KnightMeet</title>
+</svelte:head>
+
 <body class="h-full w-full min-h-screen flex bg-transparent">
 	<div class="space-y-4 m-auto p-8">
 		<div class="h1">

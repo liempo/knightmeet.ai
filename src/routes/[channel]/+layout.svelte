@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { page } from '$app/stores'
+
 	import { Members as MembersIcon } from '@/icons'
 	import Members from '@/components/members-list.svelte'
 	import Banner from '@/components/banner.svelte'
@@ -8,6 +10,10 @@
 
 	const drawerStore = getDrawerStore()
 </script>
+
+<svelte:head>
+	<title>KnightMeet | {$page.params.channel}</title>
+</svelte:head>
 
 <AppShell>
 	<Drawer

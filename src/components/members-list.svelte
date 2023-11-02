@@ -7,13 +7,18 @@
 	import { membersStore } from '@/lib/stores'
 	import { getInitials } from '@/lib/utils'
 
+	import { getDrawerStore } from '@skeletonlabs/skeleton'
+	const drawerStore = getDrawerStore()
 	let query: string
 </script>
 
 <div class="p-8 space-y-4">
 	<div class="flex justify-between items-center">
 		<h2 class="h2">Members</h2>
-		<button class="btn-icon variant-filled">
+		<button
+			class="btn-icon variant-filled"
+			on:click={() => drawerStore.close()}
+		>
 			<Arrow direction="right" />
 		</button>
 	</div>
