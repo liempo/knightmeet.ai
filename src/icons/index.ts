@@ -15,3 +15,6 @@ export const User = User__SvelteComponent_
 
 import Phone__SvelteComponent_ from './phone.svelte'
 export const Phone = Phone__SvelteComponent_
+
+import Arrow__SvelteComponent_ from './arrow.svelte'
+export const Arrow = Arrow__SvelteComponent_

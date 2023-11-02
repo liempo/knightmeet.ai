@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Microphone, Camera, Close } from '@/icons'
+	import { Microphone, Camera, Close, Arrow } from '@/icons'
 
 	import { Avatar } from '@skeletonlabs/skeleton'
 	import { scale } from 'svelte/transition'
@@ -11,7 +11,12 @@
 </script>
 
 <div class="p-8 space-y-4">
-	<h2 class="h2">Members</h2>
+	<div class="flex justify-between items-center">
+		<h2 class="h2">Members</h2>
+		<button class="btn-icon variant-filled">
+			<Arrow direction="right" />
+		</button>
+	</div>
 
 	<div class="relative">
 		<input
