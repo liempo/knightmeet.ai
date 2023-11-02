@@ -185,7 +185,7 @@
 						initials={getInitials(getUserData(user.uid).name)}
 					/>
 				{/if}
-				<div class="absolute bottom-2 left-2 badge variant-soft-surface">
+				<div class="absolute bottom-2 left-2 badge variant-glass-secondary">
 					{getUserData(user.uid).name}
 					<span>
 						<Microphone
