@@ -2,10 +2,12 @@
 	import { onDestroy, onMount } from 'svelte'
 	import { enhance } from '$app/forms'
 	import { page } from '$app/stores'
+	import { get } from 'svelte/store'
 
 	import { Microphone, Camera } from '@/icons'
 	import { getInitials } from '@/lib/utils'
 	import type { User } from '@/types/app'
+	import { userStore } from '@/lib/stores'
 
 	import { Avatar } from '@skeletonlabs/skeleton'
 
@@ -13,18 +15,13 @@
 		type ILocalAudioTrack,
 		type ILocalVideoTrack
 	} from 'agora-rtc-sdk-ng'
-	import { userStore } from '@/lib/stores'
 
 	/*  Agora objects from Meeting Component */
 	let localAudio: ILocalAudioTrack | null = null
 	let localVideo: ILocalVideoTrack | null = null
 
-	/* Current user preferences */
-	let localUser: User = {
-		name: '',
-		audio: false,
-		video: true
-	}
+	/* Current user preferences (get from default) */
+	let localUser: User = get(userStore)
 
 	page.subscribe((p) => {
 		if (p.form?.body)

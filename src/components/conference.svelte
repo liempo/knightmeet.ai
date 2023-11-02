@@ -5,8 +5,8 @@
 	import { Avatar } from '@skeletonlabs/skeleton'
 
 	import { getInitials } from '@/lib/utils'
-	import { userStore, membersStore } from '@/lib/stores'
-	import type { MeetingMetadata, User } from '@/types/app'
+	import { userStore } from '@/lib/stores'
+	import type { MeetingMetadata } from '@/types/app'
 
 	/*  Agora SDK */
 	import AgoraRTC, {
@@ -29,14 +29,6 @@
 		codec: 'vp8'
 	})
 
-	const updateMembersStore = (user: User) =>
-		membersStore.update((members) => {
-			const index = members.findIndex((m) => m.id === user.id)
-			if (members[index]) members[index] = user
-			else return [...members, user]
-			return members
-		})
-
 	$: {
 		console.log('localUser', localUser)
 		localAudio?.setEnabled(localUser.audio)
@@ -44,15 +36,29 @@
 		localUser.video ? localVideo?.play('localVideoLive') : localVideo?.stop()
 	}
 
+	// TODO: Map remoteUsers to membersStore to update members list
+
+	const updateRemoteUser = (
+		user: IAgoraRTCRemoteUser,
+		remove: boolean = false
+	) => {
+		const index = remoteUsers.findIndex((u) => u.uid === user.uid)
+		if (index > -1)
+			if (remove) remoteUsers.splice(index, 1)
+			else remoteUsers[index] = user
+		else remoteUsers.push(user)
+	}
+
 	onMount(async () => {
 		client.on('user-joined', async (user) => {
 			console.log('user-joined', user.uid)
-			remoteUsers = [...remoteUsers, user]
+			updateRemoteUser(user)
 		})
 
 		client.on('user-published', async (user, type) => {
 			console.log('user-published', user.uid, type)
-			remoteUsers[remoteUsers.findIndex((u) => u.uid === user.uid)] = user
+			updateRemoteUser(user)
+
 			if (type === 'audio') {
 				await client.subscribe(user, type)
 				user.audioTrack?.play()
@@ -64,7 +70,8 @@
 
 		client.on('user-unpublished', (user, type) => {
 			console.log('user-unpublished', user.uid)
-			remoteUsers[remoteUsers.findIndex((u) => u.uid === user.uid)] = user
+			updateRemoteUser(user)
+
 			if (type === 'audio') {
 				user.audioTrack?.stop()
 			} else if (type === 'video') {
@@ -74,7 +81,7 @@
 
 		client.on('user-left', (u) => {
 			console.log('user-left', u.uid)
-			remoteUsers = remoteUsers.filter((user) => user.uid !== u.uid)
+			updateRemoteUser(u, true)
 		})
 
 		await client.join(
@@ -178,7 +185,7 @@
 		class="absolute bottom-2 left-2 rounded-full px-2 bg-gradient-to-br variant-gradient-primary-secondary"
 	>
 		<button
-			class="btn btn-icon"
+			class="btn-icon"
 			on:click={() => {
 				localUser.audio = !localUser.audio
 				userStore.set(localUser)
@@ -188,7 +195,7 @@
 		</button>
 
 		<button
-			class="btn btn-icon"
+			class="btn-icon"
 			on:click={() => {
 				localUser.video = !localUser.video
 				userStore.set(localUser)
