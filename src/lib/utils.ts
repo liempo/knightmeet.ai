@@ -1,6 +1,6 @@
 const getInitials = (name: string) => {
 	if (!name) return ''
-	let split = name.trim().split(' ')
+	const split = name.trim().split(' ')
 	if (split.length > 1) {
 		const first = split[0]
 		const last = split[split.length - 1]
