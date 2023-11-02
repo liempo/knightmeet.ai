@@ -58,9 +58,7 @@
 
 		<div class="relative">
 			<video
-				class="card"
-				width="640"
-				height="480"
+				class="card w-[640px] h-[480px] object-cover"
 				autoplay={true}
 				muted={true}
 				id="localVideoPreview"

@@ -131,9 +131,7 @@
 	<section class="m-auto flex flex-wrap justify-center gap-2">
 		<div class="relative">
 			<video
-				class="card"
-				width="320"
-				height="240"
+				class="card w-[320px] h-[240px]"
 				autoplay={true}
 				muted={true}
 				id="localVideoLive"
@@ -168,9 +166,7 @@
 		{#each remoteUsers as user}
 			<div class="relative">
 				<video
-					class="card"
-					width="320"
-					height="240"
+					class="card w-[320px] h-[240px]"
 					autoplay={true}
 					muted={true}
 					id="remoteVideoLive-{user.uid}"
