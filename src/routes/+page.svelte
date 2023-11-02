@@ -1,5 +1,11 @@
-<script>
+<script lang="ts">
+	import { goto } from '$app/navigation'
 	import Banner from '@/components/banner.svelte'
+	import { generateChannelName, validateChannelName } from '@/lib/utils'
+
+	let channel: string
+	let isChannelValid: boolean = false
+	$: isChannelValid = validateChannelName(channel)
 </script>
 
 <body class="h-full w-full min-h-screen flex bg-transparent">
@@ -11,7 +17,14 @@
 		<section
 			class="gap-2 flex sm:items-center justify-evenly flex-col sm:flex-row sm:gap-4"
 		>
-			<button class="btn variant-filled">New meeting</button>
+			<button
+				class="btn variant-filled"
+				on:click={() => {
+					goto(`/${generateChannelName()}?new=true`)
+				}}
+			>
+				New meeting
+			</button>
 			<p class="text-token hidden sm:block">or</p>
 			<div class="relative flex items-center py-2 sm:hidden">
 				<div class="flex-grow border-t border-token" />
@@ -24,8 +37,15 @@
 					type="text"
 					class="input"
 					placeholder="Enter meeting code"
+					bind:value={channel}
 				/>
-				<button class="btn variant-filled">Join</button>
+				<button
+					class="btn variant-filled"
+					disabled={!isChannelValid}
+					on:click={() => {
+						goto(`/${channel}`)
+					}}>Join</button
+				>
 			</div>
 		</section>
 	</div>

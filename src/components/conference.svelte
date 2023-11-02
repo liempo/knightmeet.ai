@@ -6,7 +6,8 @@
 	import { Avatar } from '@skeletonlabs/skeleton'
 
 	import { getInitials } from '@/lib/utils'
-	import { userStore } from '@/lib/stores'
+	import { membersStore, userStore } from '@/lib/stores'
+	import type { UserData } from '@/lib/kv'
 	import type { MeetingMetadata } from '@/types/app'
 
 	/*  Agora SDK */
@@ -14,7 +15,8 @@
 		type IAgoraRTCClient,
 		type IAgoraRTCRemoteUser,
 		type ILocalAudioTrack,
-		type ILocalVideoTrack
+		type ILocalVideoTrack,
+		type UID
 	} from 'agora-rtc-sdk-ng'
 
 	export let metadata: MeetingMetadata
@@ -23,6 +25,8 @@
 	let localUser = $userStore
 	let localAudio: ILocalAudioTrack | null = null
 	let localVideo: ILocalVideoTrack | null = null
+
+	let userDataMap = new Map<string, UserData>()
 
 	AgoraRTC.setLogLevel(4)
 	let client: IAgoraRTCClient = AgoraRTC.createClient({
@@ -37,7 +41,20 @@
 		localUser.video ? localVideo?.play('localVideoLive') : localVideo?.stop()
 	}
 
-	// TODO: Map remoteUsers to membersStore to update members list
+	$: membersStore.set([
+		localUser,
+		...remoteUsers.map((u) => ({
+			id: parseInt(u.uid.toString()),
+			name: getUserData(u.uid).name,
+			audio: u.hasAudio,
+			video: u.hasVideo
+		}))
+	])
+
+	const getUserData = (id: UID) => {
+		const uid = id.toString()
+		return userDataMap.get(uid) ?? { id: -1, name: 'Guest' }
+	}
 
 	const updateRemoteUser = (
 		user: IAgoraRTCRemoteUser,
@@ -45,14 +62,19 @@
 	) => {
 		const index = remoteUsers.findIndex((u) => u.uid === user.uid)
 		if (index > -1)
-			if (remove) remoteUsers.splice(index, 1)
+			if (remove) remoteUsers = remoteUsers.filter((u) => u.uid !== user.uid)
 			else remoteUsers[index] = user
-		else remoteUsers.push(user)
+		else remoteUsers = [...remoteUsers, user]
 	}
 
 	onMount(async () => {
 		client.on('user-joined', async (user) => {
 			console.log('user-joined', user.uid)
+			const uid = user.uid.toString()
+			userDataMap.set(
+				uid,
+				await fetch(`/api/user/${uid}`).then((r) => r.json())
+			)
 			updateRemoteUser(user)
 		})
 
@@ -160,11 +182,11 @@
 					<Avatar
 						class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
 						width="w-24"
-						initials={getInitials('Other')}
+						initials={getInitials(getUserData(user.uid).name)}
 					/>
 				{/if}
 				<div class="absolute bottom-2 left-2 badge variant-filled-primary">
-					{'Other'}
+					{getUserData(user.uid).name}
 					<span>
 						<Microphone
 							class="w-3 h-3 ml-2"
@@ -206,7 +228,14 @@
 
 			<button
 				class="btn-icon btn-icon-sm variant-filled-error mr-1"
-				on:click={() => goto('/')}
+				on:click={async () => {
+					remoteUsers = []
+					localAudio?.close()
+					localVideo?.close()
+					client.removeAllListeners()
+					await client.leave()
+					goto('/')
+				}}
 			>
 				<Phone />
 			</button>

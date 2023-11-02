@@ -10,4 +10,5 @@ export type MeetingMetadata = {
 	appId: string
 	channel: string
 	token: string
+	hosting: boolean
 }
