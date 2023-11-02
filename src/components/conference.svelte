@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte'
+	import { goto } from '$app/navigation'
 
-	import { Microphone, Camera } from '@/icons'
+	import { Microphone, Camera, Phone } from '@/icons'
 	import { Avatar } from '@skeletonlabs/skeleton'
 
 	import { getInitials } from '@/lib/utils'
@@ -181,27 +182,34 @@
 		{/each}
 	</section>
 
-	<div
-		class="absolute bottom-2 left-2 rounded-full px-2 bg-gradient-to-br variant-gradient-primary-secondary"
-	>
-		<button
-			class="btn-icon"
-			on:click={() => {
-				localUser.audio = !localUser.audio
-				userStore.set(localUser)
-			}}
-		>
-			<Microphone on={localUser.audio} />
-		</button>
+	<div class="absolute bottom-2 left-2 right-2 flex justify-center">
+		<div class="rounded-full px-1 variant-soft-surface">
+			<button
+				class="btn-icon"
+				on:click={() => {
+					localUser.audio = !localUser.audio
+					userStore.set(localUser)
+				}}
+			>
+				<Microphone on={localUser.audio} />
+			</button>
 
-		<button
-			class="btn-icon"
-			on:click={() => {
-				localUser.video = !localUser.video
-				userStore.set(localUser)
-			}}
-		>
-			<Camera on={localUser.video} />
-		</button>
+			<button
+				class="btn-icon"
+				on:click={() => {
+					localUser.video = !localUser.video
+					userStore.set(localUser)
+				}}
+			>
+				<Camera on={localUser.video} />
+			</button>
+
+			<button
+				class="btn-icon btn-icon-sm variant-filled-error mr-1"
+				on:click={() => goto('/')}
+			>
+				<Phone />
+			</button>
+		</div>
 	</div>
 </div>

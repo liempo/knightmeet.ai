@@ -12,3 +12,6 @@ export const Close = Close__SvelteComponent_
 
 import User__SvelteComponent_ from './user.svelte'
 export const User = User__SvelteComponent_
+
+import Phone__SvelteComponent_ from './phone.svelte'
+export const Phone = Phone__SvelteComponent_

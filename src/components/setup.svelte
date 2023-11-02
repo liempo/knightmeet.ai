@@ -6,8 +6,8 @@
 
 	import { Microphone, Camera } from '@/icons'
 	import { getInitials } from '@/lib/utils'
-	import type { User } from '@/types/app'
 	import { userStore } from '@/lib/stores'
+	import type { User } from '@/types/app'
 
 	import { Avatar } from '@skeletonlabs/skeleton'
 
@@ -24,11 +24,12 @@
 	let localUser: User = get(userStore)
 
 	page.subscribe((p) => {
-		if (p.form?.body)
+		if (p.form?.action === 'join' && p.form?.body) {
 			userStore.set({
 				...localUser,
 				id: p.form.body.uid
 			})
+		}
 	})
 
 	$: {
@@ -78,6 +79,7 @@
 		<form
 			method="POST"
 			class="flex gap-2 w-full items-center justify-between"
+			action="?/join"
 			use:enhance
 		>
 			<input

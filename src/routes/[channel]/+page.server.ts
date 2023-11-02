@@ -7,7 +7,7 @@ import { generateUID } from '@/lib/utils'
 const { RtcTokenBuilder, RtcRole } = pkg
 
 export const actions = {
-	default: async ({ params }) => {
+	join: async ({ params }) => {
 		const channel = params.channel
 		const appId = env.VITE_AGORA_APP_ID
 		const appCertificate = env.VITE_AGORA_APP_CERTIFICATE
@@ -37,6 +37,7 @@ export const actions = {
 		console.log('Token generated for channel', channel, token)
 
 		return {
+			action: 'join',
 			body: {
 				uid,
 				appId,
