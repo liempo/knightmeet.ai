@@ -1,7 +1,7 @@
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 
-export const createFaceLandmarker = async () => {
-	return await FaceLandmarker.createFromOptions(
+export const createFaceLandmarker = async () =>
+	await FaceLandmarker.createFromOptions(
 		await FilesetResolver.forVisionTasks(
 			'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
 		),
@@ -15,4 +15,3 @@ export const createFaceLandmarker = async () => {
 			numFaces: 1
 		}
 	)
-}
