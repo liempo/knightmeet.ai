@@ -12,14 +12,16 @@
 	import { createFaceLandmarker } from '@/lib/ml'
 	import { FaceLandmarker, DrawingUtils } from '@mediapipe/tasks-vision'
 	import type { FaceLandmarker as FaceLandmarkerType } from '@mediapipe/tasks-vision'
-	import { fade } from 'svelte/transition'
 
 	export let user: User
-	let video: HTMLVideoElement
-	let overlay: HTMLCanvasElement
+	export let width: string = 'w-[640px]'
+	export let height: string = 'h-[480px]'
+	export let avatarWidth: string = 'w-48'
+	export let video: HTMLVideoElement | null = null
+	export let overlay: HTMLCanvasElement | null = null
 
-	let audioTrack: ILocalAudioTrack | null = null
-	let videoTrack: ILocalVideoTrack | null = null
+	export let audioTrack: ILocalAudioTrack | null = null
+	export let videoTrack: ILocalVideoTrack | null = null
 
 	let faceLandmarker: FaceLandmarkerType
 	let drawingUtils: DrawingUtils
@@ -33,8 +35,11 @@
 	}
 
 	$: {
-		if (user.video) videoTrack?.play(video)
-		else videoTrack?.stop()
+		if (video && user.video) videoTrack?.play(video)
+		else {
+			videoTrack?.stop()
+			overlay?.getContext('2d')?.clearRect(0, 0, overlay.width, overlay.height)
+		}
 		audioTrack?.setEnabled(user.audio)
 		videoTrack?.setEnabled(user.video)
 	}
@@ -81,7 +86,7 @@
 
 <div class="relative">
 	<video
-		class="card w-[640px] h-[480px] object-cover"
+		class={`card ${width} ${height} object-cover`}
 		autoplay={true}
 		muted={true}
 		bind:this={video}
@@ -90,10 +95,7 @@
 		<track kind="captions" />
 	</video>
 
-	<div
-		class="absolute top-0 left-0 w-full h-full -scale-x-[1]"
-		in:fade={{ duration: 500, delay: 500 }}
-	>
+	<div class="absolute top-0 left-0 w-full h-full -scale-x-[1]">
 		<canvas
 			class="w-full h-full"
 			bind:this={overlay}
@@ -103,7 +105,7 @@
 	{#if !user.video && !videoTrack?.isPlaying}
 		<Avatar
 			class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
-			width="w-48"
+			width={avatarWidth}
 			initials={getInitials(user.name)}
 		/>
 	{/if}

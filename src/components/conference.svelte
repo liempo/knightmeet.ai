@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation'
 
 	import { Microphone, Camera, Phone } from '@/icons'
+	import LocalUserVideo from '@/components/local-user-video.svelte'
 	import { Avatar } from '@skeletonlabs/skeleton'
 
 	import { getInitials } from '@/lib/utils'
@@ -25,6 +26,7 @@
 	let localUser = $userStore
 	let localAudio: ILocalAudioTrack | null = null
 	let localVideo: ILocalVideoTrack | null = null
+	let localVideoRef: HTMLVideoElement
 
 	let userDataMap = new Map<string, UserData>()
 
@@ -35,10 +37,9 @@
 	})
 
 	$: {
-		console.log('localUser', localUser)
 		localAudio?.setEnabled(localUser.audio)
 		localVideo?.setEnabled(localUser.video)
-		localUser.video ? localVideo?.play('localVideoLive') : localVideo?.stop()
+		localUser.video ? localVideo?.play(localVideoRef) : localVideo?.stop()
 	}
 
 	$: membersStore.set([
@@ -113,15 +114,12 @@
 			metadata.token,
 			metadata.uid
 		)
-		;[localAudio, localVideo] = await AgoraRTC.createMicrophoneAndCameraTracks()
-		localVideo?.play('localVideoLive')
-		await client.publish([localAudio, localVideo])
+
+		if (localAudio && localVideo) await client.publish([localAudio, localVideo])
 	})
 
 	onDestroy(() => {
 		remoteUsers = []
-		localAudio?.close()
-		localVideo?.close()
 		client.leave()
 		client.removeAllListeners()
 	})
@@ -129,39 +127,15 @@
 
 <div class="h-full flex relative">
 	<section class="m-auto flex flex-wrap justify-center gap-2">
-		<div class="relative">
-			<video
-				class="card w-[320px] h-[240px]"
-				autoplay={true}
-				muted={true}
-				id="localVideoLive"
-			>
-				<track kind="captions" />
-			</video>
-
-			{#if !localUser.video}
-				<Avatar
-					class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
-					width="w-24"
-					initials={getInitials(localUser.name)}
-				/>
-			{/if}
-			<div class="absolute bottom-2 left-2 badge variant-glass-secondary">
-				{localUser.name}
-				<span>
-					<Microphone
-						class="w-3 h-3 ml-2"
-						on={localUser.audio}
-					/>
-				</span>
-				<span>
-					<Camera
-						class="w-3 h-3"
-						on={localUser.video}
-					/>
-				</span>
-			</div>
-		</div>
+		<LocalUserVideo
+			user={localUser}
+			width="w-[320px]"
+			height="h-[240px]"
+			avatarWidth="w-24"
+			bind:video={localVideoRef}
+			bind:audioTrack={localAudio}
+			bind:videoTrack={localVideo}
+		/>
 
 		{#each remoteUsers as user}
 			<div class="relative">
