@@ -9,9 +9,16 @@
 		type ILocalVideoTrack
 	} from 'agora-rtc-sdk-ng'
 
-	import { createFaceLandmarker } from '@/lib/ml'
-	import { FaceLandmarker, DrawingUtils } from '@mediapipe/tasks-vision'
-	import type { FaceLandmarker as FaceLandmarkerType } from '@mediapipe/tasks-vision'
+	import {
+		FaceLandmarker,
+		PoseLandmarker,
+		DrawingUtils
+	} from '@mediapipe/tasks-vision'
+	import { createFaceLandmarker, createPoseLandmarker } from '@/lib/ml'
+	import type {
+		FaceLandmarker as FaceLandmarkerType,
+		PoseLandmarker as PoseLandmarkerType
+	} from '@mediapipe/tasks-vision'
 
 	export let user: User
 	export let width: string = 'w-[640px]'
@@ -24,6 +31,7 @@
 	export let videoTrack: ILocalVideoTrack | null = null
 
 	let faceLandmarker: FaceLandmarkerType
+	let poseLandmarker: PoseLandmarkerType
 	let drawingUtils: DrawingUtils
 	let lastVideoTime = -1
 
@@ -48,11 +56,13 @@
 		videoTrack = await AgoraRTC.createCameraVideoTrack()
 		audioTrack = await AgoraRTC.createMicrophoneAudioTrack()
 		faceLandmarker = await createFaceLandmarker()
+		poseLandmarker = await createPoseLandmarker()
 	})
 
 	const render = () => {
 		if (
 			!faceLandmarker ||
+			!poseLandmarker ||
 			!video ||
 			!overlay ||
 			!drawingUtils ||
@@ -62,18 +72,49 @@
 			return
 		}
 
-		const timestamp = performance.now()
-		const landmarkerResult = faceLandmarker.detectForVideo(video, timestamp)
-		lastVideoTime = video.currentTime
-		console.log('landmarkerResult', landmarkerResult)
+		const videoWidth = parseInt(width.match(/\d+/)![0])
+		const ratio = video.videoHeight / video.videoWidth
+		const calculatedHeight = videoWidth * ratio
+		video.width = videoWidth
+		video.height = calculatedHeight
+		overlay.width = videoWidth
+		overlay.height = calculatedHeight
+		overlay.width = video.videoWidth
+		overlay.height = video.videoHeight
 
-		overlay.getContext('2d')?.clearRect(0, 0, overlay.width, overlay.height)
-		for (const landmarks of landmarkerResult.faceLandmarks) {
-			drawingUtils.drawConnectors(
-				landmarks,
-				FaceLandmarker.FACE_LANDMARKS_TESSELATION,
-				{ color: '#36454F', lineWidth: 0.3 }
-			)
+		const timestamp = performance.now()
+		const startInferenceTime = performance.now()
+		const faceLandmarkerResult = faceLandmarker.detectForVideo(video, timestamp)
+		const poseLandmarkerResult = poseLandmarker.detectForVideo(video, timestamp)
+		const endInferenceTime = performance.now()
+		const inferenceTime = endInferenceTime - startInferenceTime
+		console.log('Inference time: ', inferenceTime)
+		lastVideoTime = video.currentTime
+
+		const faceConnectors = [
+			{
+				connector: FaceLandmarker.FACE_LANDMARKS_TESSELATION,
+				options: { color: '#C0C0C070', lineWidth: 1 }
+			}
+		]
+
+		for (const landmarks of faceLandmarkerResult.faceLandmarks) {
+			for (const { connector, options } of faceConnectors) {
+				drawingUtils.drawConnectors(landmarks, connector, options)
+			}
+		}
+
+		const poseConnectors = [
+			{
+				connector: PoseLandmarker.POSE_CONNECTIONS,
+				options: { color: '#00FF00', lineWidth: 1 }
+			}
+		]
+
+		for (const landmarks of poseLandmarkerResult.landmarks) {
+			for (const { connector, options } of poseConnectors) {
+				drawingUtils.drawConnectors(landmarks, connector, options)
+			}
 		}
 		requestAnimationFrame(render)
 	}
@@ -95,11 +136,8 @@
 		<track kind="captions" />
 	</video>
 
-	<div class="absolute top-0 left-0 w-full h-full -scale-x-[1]">
-		<canvas
-			class="w-full h-full"
-			bind:this={overlay}
-		/>
+	<div class="absolute top-0 bottom-0 left-0 right-0 -scale-x-[1]">
+		<canvas bind:this={overlay} />
 	</div>
 
 	{#if !user.video && !videoTrack?.isPlaying}
