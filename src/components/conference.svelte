@@ -129,9 +129,8 @@
 	<section class="m-auto flex flex-wrap justify-center gap-2">
 		<LocalUserVideo
 			user={localUser}
-			width="w-[320px]"
-			height="h-[240px]"
-			avatarWidth="w-24"
+			videoWidth={320}
+			videoHeight={240}
 			bind:video={localVideoRef}
 			bind:audioTrack={localAudio}
 			bind:videoTrack={localVideo}

@@ -25,12 +25,10 @@
 		PoseLandmarker as PoseLandmarkerType,
 		HandLandmarker as HandLandmarkerType
 	} from '@mediapipe/tasks-vision'
-	import type { L } from 'vitest/dist/types-198fd1d9'
 
 	export let user: User
-	export let width: string = 'w-[640px]'
-	export let height: string = 'h-[480px]'
-	export let avatarWidth: string = 'w-48'
+	export let videoWidth: number = 640
+	export let videoHeight: number = 480
 	export let video: HTMLVideoElement | null = null
 	export let overlay: HTMLCanvasElement | null = null
 
@@ -82,15 +80,12 @@
 			return
 		}
 
-		const videoWidth = parseInt(width.match(/\d+/)![0])
 		const ratio = video.videoHeight / video.videoWidth
 		const calculatedHeight = videoWidth * ratio
 		video.width = videoWidth
 		video.height = calculatedHeight
 		overlay.width = videoWidth
 		overlay.height = calculatedHeight
-		overlay.width = video.videoWidth
-		overlay.height = video.videoHeight
 
 		const timestamp = performance.now()
 		const startInferenceTime = performance.now()
@@ -135,7 +130,9 @@
 
 <div class="relative">
 	<video
-		class={`card ${width} ${height} object-cover`}
+		class={`card object-cover h-[${videoHeight}px] w-[${videoWidth}px]`}
+		width={videoWidth}
+		height={videoHeight}
 		autoplay={true}
 		muted={true}
 		bind:this={video}
@@ -151,7 +148,7 @@
 	{#if !user.video && !videoTrack?.isPlaying}
 		<Avatar
 			class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
-			width={avatarWidth}
+			width="w-1/3"
 			initials={getInitials(user.name)}
 		/>
 	{/if}
