@@ -1,4 +1,4 @@
-import { FaceLandmarker, PoseLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
+import { FaceLandmarker, PoseLandmarker, HandLandmarker,FilesetResolver } from '@mediapipe/tasks-vision'
 
 export const createFaceLandmarker = async () =>
 	await FaceLandmarker.createFromOptions(
@@ -28,5 +28,21 @@ export const createPoseLandmarker = async () =>
 				delegate: 'GPU'
 			},
 			runningMode: 'VIDEO',
+		}
+	)
+
+export const createHandLandmarker = async () =>
+	await HandLandmarker.createFromOptions(
+		await FilesetResolver.forVisionTasks(
+			'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+		),
+		{
+			baseOptions: {
+				modelAssetPath:
+					'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task',
+				delegate: 'GPU'
+			},
+			runningMode: 'VIDEO',
+			numHands: 2
 		}
 	)

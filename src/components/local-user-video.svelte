@@ -12,13 +12,20 @@
 	import {
 		FaceLandmarker,
 		PoseLandmarker,
-		DrawingUtils
+		DrawingUtils,
+		HandLandmarker
 	} from '@mediapipe/tasks-vision'
-	import { createFaceLandmarker, createPoseLandmarker } from '@/lib/ml'
+	import {
+		createFaceLandmarker,
+		createPoseLandmarker,
+		createHandLandmarker
+	} from '@/lib/ml'
 	import type {
 		FaceLandmarker as FaceLandmarkerType,
-		PoseLandmarker as PoseLandmarkerType
+		PoseLandmarker as PoseLandmarkerType,
+		HandLandmarker as HandLandmarkerType
 	} from '@mediapipe/tasks-vision'
+	import type { L } from 'vitest/dist/types-198fd1d9'
 
 	export let user: User
 	export let width: string = 'w-[640px]'
@@ -32,6 +39,7 @@
 
 	let faceLandmarker: FaceLandmarkerType
 	let poseLandmarker: PoseLandmarkerType
+	let handLandmarker: HandLandmarkerType
 	let drawingUtils: DrawingUtils
 	let lastVideoTime = -1
 
@@ -57,12 +65,14 @@
 		audioTrack = await AgoraRTC.createMicrophoneAudioTrack()
 		faceLandmarker = await createFaceLandmarker()
 		poseLandmarker = await createPoseLandmarker()
+		handLandmarker = await createHandLandmarker()
 	})
 
 	const render = () => {
 		if (
 			!faceLandmarker ||
 			!poseLandmarker ||
+			!handLandmarker ||
 			!video ||
 			!overlay ||
 			!drawingUtils ||
@@ -86,36 +96,34 @@
 		const startInferenceTime = performance.now()
 		const faceLandmarkerResult = faceLandmarker.detectForVideo(video, timestamp)
 		const poseLandmarkerResult = poseLandmarker.detectForVideo(video, timestamp)
+		const handLandmarkerResult = handLandmarker.detectForVideo(video, timestamp)
 		const endInferenceTime = performance.now()
 		const inferenceTime = endInferenceTime - startInferenceTime
 		console.log('Inference time: ', inferenceTime)
 		lastVideoTime = video.currentTime
 
-		const faceConnectors = [
-			{
-				connector: FaceLandmarker.FACE_LANDMARKS_TESSELATION,
-				options: { color: '#C0C0C070', lineWidth: 1 }
-			}
-		]
-
 		for (const landmarks of faceLandmarkerResult.faceLandmarks) {
-			for (const { connector, options } of faceConnectors) {
-				drawingUtils.drawConnectors(landmarks, connector, options)
-			}
+			drawingUtils.drawConnectors(
+				landmarks,
+				FaceLandmarker.FACE_LANDMARKS_TESSELATION,
+				{ color: '#C0C0C070', lineWidth: 1 }
+			)
 		}
-
-		const poseConnectors = [
-			{
-				connector: PoseLandmarker.POSE_CONNECTIONS,
-				options: { color: '#00FF00', lineWidth: 1 }
-			}
-		]
 
 		for (const landmarks of poseLandmarkerResult.landmarks) {
-			for (const { connector, options } of poseConnectors) {
-				drawingUtils.drawConnectors(landmarks, connector, options)
-			}
+			drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
+				color: '#00FF00',
+				lineWidth: 1
+			})
 		}
+
+		for (const landmarks of handLandmarkerResult.landmarks) {
+			drawingUtils.drawConnectors(landmarks, HandLandmarker.HAND_CONNECTIONS, {
+				color: '#00CC00',
+				lineWidth: 5
+			})
+		}
+
 		requestAnimationFrame(render)
 	}
 
