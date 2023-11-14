@@ -41,6 +41,12 @@
 			use:enhance
 		>
 			<input
+				name="uid"
+				bind:value={localUser.id}
+				type="hidden"
+			/>
+
+			<input
 				name="name"
 				bind:value={localUser.name}
 				type="text"

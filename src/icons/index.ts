@@ -21,3 +21,6 @@ export const Arrow = Arrow__SvelteComponent_
 
 import Brain__SvelteComponent_ from './brain.svelte'
 export const Brain = Brain__SvelteComponent_
+
+import Crown__SvelteComponent_ from './crown.svelte'
+export const Crown = Crown__SvelteComponent_

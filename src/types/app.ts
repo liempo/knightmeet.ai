@@ -9,6 +9,6 @@ export type MeetingMetadata = {
 	uid: number
 	appId: string
 	channel: string
+	owner: number
 	token: string
-	hosting: boolean
 }

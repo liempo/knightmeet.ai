@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte'
 	import { goto } from '$app/navigation'
 
-	import { Microphone, Camera, Phone } from '@/icons'
+	import { Microphone, Camera, Phone, Crown } from '@/icons'
 	import { Avatar } from '@skeletonlabs/skeleton'
 
 	import { getInitials } from '@/lib/utils'
@@ -147,10 +147,15 @@
 				/>
 			{/if}
 			<div class="absolute bottom-2 left-2 badge variant-glass-secondary">
-				{localUser.name}
+				<span class="mr-1">{localUser.name}</span>
+				{#if metadata.owner === localUser.id}
+					<span>
+						<Crown class="w-3 h-3" />
+					</span>
+				{/if}
 				<span>
 					<Microphone
-						class="w-3 h-3 ml-2"
+						class="w-3 h-3"
 						on={localUser.audio}
 					/>
 				</span>
@@ -182,10 +187,16 @@
 					/>
 				{/if}
 				<div class="absolute bottom-2 left-2 badge variant-glass-secondary">
-					{getUserData(user.uid).name}
+					<span class="mr-1">{getUserData(user.uid).name}</span>
+
+					{#if metadata.owner === parseInt(user.uid.toString())}
+						<span>
+							<Crown class="w-3 h-3" />
+						</span>
+					{/if}
 					<span>
 						<Microphone
-							class="w-3 h-3 ml-2"
+							class="w-3 h-3"
 							on={user.hasAudio}
 						/>
 					</span>

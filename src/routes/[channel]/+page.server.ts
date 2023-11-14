@@ -24,20 +24,26 @@ export const actions = {
 		const channel = params.channel
 		const appId = env.VITE_AGORA_APP_ID
 		const appCertificate = env.VITE_AGORA_APP_CERTIFICATE
-		const uid = generateUID()
 
-		const name = await request
-			.formData()
-			.then((data) => data.get('name')?.toString())
+		const form = await request.formData()
+		const uid = parseInt(form.get('uid')?.toString() || '') || generateUID()
+
+		const name = form.get('name')?.toString()
 		if (name) await setUserData(uid, name)
 
 		const hosting = cookies.get('hosting') === 'true'
 		cookies.delete('hosting', { path: '/' })
+		let owner = -1
 
-		if (hosting) await createChannel({ name: channel, owner: uid })
+		if (hosting)  {
+			await createChannel({ name: channel, owner: uid })
+			owner = uid
+		}
 		else {
 			const existingData = await getChannel(channel)
 			if (!existingData) throw error(404, 'Meeting not found')
+			// KV doesn't support numbers, so we have to cast it
+			owner = parseInt(`${existingData.owner}`)
 		}
 
 		if (channel === env.VITE_AGORA_TEST_CHANNEL) {
@@ -48,7 +54,7 @@ export const actions = {
 					appId,
 					channel,
 					token: env.VITE_AGORA_TEST_TOKEN,
-					hosting
+					owner
 				}
 			}
 		}
@@ -61,7 +67,12 @@ export const actions = {
 			600,
 			Math.floor(Date.now() / 1000) + 3600
 		)
-		console.log('Token generated for channel', channel, token)
+		console.log(`Token generated`, {
+			uid,
+			channel,
+			token,
+			owner
+		})
 
 		return {
 			action: 'join',
@@ -70,7 +81,7 @@ export const actions = {
 				appId,
 				channel,
 				token,
-				hosting
+				owner
 			}
 		}
 	}
