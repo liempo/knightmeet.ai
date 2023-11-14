@@ -19,12 +19,30 @@
 		type UID
 	} from 'agora-rtc-sdk-ng'
 
+	/* MediaPipe */
+	import { createFaceLandmarker, createPoseLandmarker } from '@/lib/ml'
+	import {
+		FaceLandmarker,
+		PoseLandmarker,
+		DrawingUtils
+	} from '@mediapipe/tasks-vision'
+	import type {
+		FaceLandmarker as FaceLandmarkerType,
+		PoseLandmarker as PoseLandmarkerType
+	} from '@mediapipe/tasks-vision'
+
 	export let metadata: MeetingMetadata
 
 	let remoteUsers: IAgoraRTCRemoteUser[] = []
 	let localUser = $userStore
 	let localAudio: ILocalAudioTrack | null = null
 	let localVideo: ILocalVideoTrack | null = null
+
+	let showTrackingPreview = true
+	let faceLandmarker: FaceLandmarkerType
+	let poseLandmarker: PoseLandmarkerType
+	let drawingUtils: DrawingUtils
+	let lastVideoTime = -1
 
 	let userDataMap = new Map<string, UserData>()
 
@@ -67,6 +85,69 @@
 		else remoteUsers = [...remoteUsers, user]
 	}
 
+	const render = () => {
+		if (!faceLandmarker || !poseLandmarker) {
+			requestAnimationFrame(render)
+			return
+		}
+		// prettier-ignore
+		const video = document.getElementById(
+			'localVideoLive'
+		) as HTMLVideoElement
+		const overlay = document.getElementById(
+			'localVideoOverlay'
+		) as HTMLCanvasElement
+
+		if (!video || !overlay) {
+			requestAnimationFrame(render)
+			return
+		}
+
+		if (!drawingUtils) {
+			const ctx = overlay.getContext('2d')
+			if (ctx) drawingUtils = new DrawingUtils(ctx)
+		}
+
+		if (video.currentTime === lastVideoTime) {
+			requestAnimationFrame(render)
+			return
+		}
+
+		overlay.width = video.videoWidth
+		overlay.height = video.videoHeight
+
+		const timestamp = performance.now()
+		const faceLandmarkerResult = faceLandmarker.detectForVideo(video, timestamp)
+		const poseLandmarkerResult = poseLandmarker.detectForVideo(video, timestamp)
+		lastVideoTime = video.currentTime
+
+		if (showTrackingPreview) {
+			for (const landmarks of faceLandmarkerResult.faceLandmarks) {
+				drawingUtils.drawConnectors(
+					landmarks,
+					FaceLandmarker.FACE_LANDMARKS_TESSELATION,
+					{ color: '#36454F', lineWidth: 0.2 }
+				)
+			}
+			for (const landmarks of poseLandmarkerResult.landmarks) {
+				drawingUtils.drawLandmarks(landmarks, {
+					color: '#36454F',
+					radius: 0.5
+				})
+				drawingUtils.drawConnectors(
+					landmarks,
+					PoseLandmarker.POSE_CONNECTIONS,
+					{
+						color: '#36454F',
+						lineWidth: 0.2
+					}
+				)
+			}
+		}
+
+		requestAnimationFrame(render)
+	}
+
 	onMount(async () => {
 		client.on('user-joined', async (user) => {
 			console.log('user-joined', user.uid)
@@ -107,6 +188,9 @@
 			updateRemoteUser(u, true)
 		})
 
+		faceLandmarker = await createFaceLandmarker()
+		poseLandmarker = await createPoseLandmarker()
+
 		await client.join(
 			metadata.appId,
 			metadata.channel,
@@ -121,6 +205,8 @@
 
 	onDestroy(() => {
 		remoteUsers = []
+		faceLandmarker.close()
+		poseLandmarker.close()
 		localAudio?.close()
 		localVideo?.close()
 		client.leave()
@@ -136,9 +222,17 @@
 				autoplay={true}
 				muted={true}
 				id="localVideoLive"
+				on:loadedmetadata={render}
 			>
 				<track kind="captions" />
 			</video>
+
+			<div class="absolute top-0 left-0 w-[320px] h-[240px] -scale-x-[1]">
+				<canvas
+					class="w-full h-full"
+					id="localVideoOverlay"
+				/>
+			</div>
 
 			{#if !localUser.video}
 				<Avatar
@@ -240,6 +334,8 @@
 					remoteUsers = []
 					localAudio?.close()
 					localVideo?.close()
+					faceLandmarker.close()
+					poseLandmarker.close()
 					client.removeAllListeners()
 					await client.leave()
 					goto('/')
