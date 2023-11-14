@@ -18,3 +18,6 @@ export const Phone = Phone__SvelteComponent_
 
 import Arrow__SvelteComponent_ from './arrow.svelte'
 export const Arrow = Arrow__SvelteComponent_
+
+import Brain__SvelteComponent_ from './brain.svelte'
+export const Brain = Brain__SvelteComponent_
