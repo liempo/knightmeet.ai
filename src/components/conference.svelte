@@ -6,7 +6,7 @@
 	import { Avatar } from '@skeletonlabs/skeleton'
 
 	import { getInitials } from '@/lib/utils'
-	import { membersStore, userStore } from '@/lib/stores'
+	import { channelStore, membersStore, userStore } from '@/lib/stores'
 	import type { UserData } from '@/lib/kv'
 	import type { MeetingMetadata } from '@/types/app'
 
@@ -115,6 +115,7 @@
 		)
 		;[localAudio, localVideo] = await AgoraRTC.createMicrophoneAndCameraTracks()
 		localVideo?.play('localVideoLive')
+		channelStore.set(metadata)
 		await client.publish([localAudio, localVideo])
 	})
 

@@ -5,7 +5,8 @@
 	import Members from '@/components/members-list.svelte'
 	import Banner from '@/components/banner.svelte'
 
-	import { AppShell, AppBar, Drawer, LightSwitch } from '@skeletonlabs/skeleton'
+	import { channelStore } from '@/lib/stores'
+	import { AppShell, AppBar, Drawer } from '@skeletonlabs/skeleton'
 	import { getDrawerStore } from '@skeletonlabs/skeleton'
 
 	const drawerStore = getDrawerStore()
@@ -26,15 +27,26 @@
 	</Drawer>
 	<svelte:fragment slot="header">
 		<AppBar class="shadow-lg">
-			<svelte:fragment slot="lead"><Banner /></svelte:fragment>
+			<svelte:fragment slot="lead">
+				<a href="/">
+					<Banner />
+				</a>
+			</svelte:fragment>
 			<svelte:fragment slot="trail">
-				<LightSwitch />
-				<button
-					class="btn-icon btn-icon-sm variant-filled"
-					on:click={() => drawerStore.open({ id: 'members' })}
-				>
-					<MembersIcon />
-				</button>
+				{#if $channelStore && $channelStore.uid === $channelStore.owner}
+					<button class="btn btn-sm variant-filled-tertiary">
+						Start Attendance
+					</button>
+				{/if}
+
+				{#if $channelStore}
+					<button
+						class="btn-icon btn-icon-sm variant-filled"
+						on:click={() => drawerStore.open({ id: 'members' })}
+					>
+						<MembersIcon />
+					</button>
+				{/if}
 			</svelte:fragment>
 		</AppBar>
 	</svelte:fragment>
