@@ -3,13 +3,15 @@
 	import { page } from '$app/stores'
 	import { get } from 'svelte/store'
 
-	import { Microphone, Camera } from '@/icons'
+	import { Microphone, Camera, Brain } from '@/icons'
 	import { userStore } from '@/lib/stores'
 	import type { User } from '@/types/app'
 
 	import LocalUserVideo from './local-user-video.svelte'
 
 	let localUser: User = get(userStore)
+	let showTrackingPreview = false
+
 	page.subscribe((p) => {
 		if (p.form?.action === 'join' && p.form?.body) {
 			userStore.set({
@@ -27,7 +29,10 @@
 			<p>Setup your audio and profile before joining.</p>
 		</div>
 
-		<LocalUserVideo user={localUser} />
+		<LocalUserVideo
+			user={localUser}
+			{showTrackingPreview}
+		/>
 
 		<form
 			method="POST"
@@ -44,6 +49,18 @@
 			/>
 			<button
 				type="button"
+				class="btn btn-sm variant-filled-tertiary"
+				disabled={!localUser.video}
+				on:click={() => (showTrackingPreview = !showTrackingPreview)}
+			>
+				<span>
+					<Brain on={showTrackingPreview} />
+				</span>
+				<span>AI</span>
+			</button>
+
+			<button
+				type="button"
 				class="btn-icon btn-icon-lg variant-filled-tertiary"
 				on:click={() => (localUser.audio = !localUser.audio)}
 			>
@@ -56,7 +73,6 @@
 			>
 				<Camera on={localUser.video} />
 			</button>
-
 			<button
 				class="btn variant-filled-primary"
 				type="submit"

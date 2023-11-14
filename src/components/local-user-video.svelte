@@ -28,6 +28,7 @@
 	let audioTrack: ILocalAudioTrack | null = null
 	let videoTrack: ILocalVideoTrack | null = null
 
+	export let showTrackingPreview = false
 	let faceLandmarker: FaceLandmarkerType
 	let poseLandmarker: PoseLandmarkerType
 	let drawingUtils: DrawingUtils
@@ -75,25 +76,36 @@
 		const poseLandmarkerResult = poseLandmarker.detectForVideo(video, timestamp)
 		lastVideoTime = video.currentTime
 
-		for (const landmarks of faceLandmarkerResult.faceLandmarks) {
-			drawingUtils.drawConnectors(
-				landmarks,
-				FaceLandmarker.FACE_LANDMARKS_TESSELATION,
-				{ color: '#36454F', lineWidth: 1 }
-			)
-		}
-
-		for (const landmarks of poseLandmarkerResult.landmarks) {
-			drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
-				color: '#00FF00',
-				lineWidth: 1
-			})
+		if (showTrackingPreview) {
+			for (const landmarks of faceLandmarkerResult.faceLandmarks) {
+				drawingUtils.drawConnectors(
+					landmarks,
+					FaceLandmarker.FACE_LANDMARKS_TESSELATION,
+					{ color: '#36454F', lineWidth: 0.2 }
+				)
+			}
+			for (const landmarks of poseLandmarkerResult.landmarks) {
+				drawingUtils.drawLandmarks(landmarks, {
+					color: '#36454F',
+					radius: 0.5
+				})
+				drawingUtils.drawConnectors(
+					landmarks,
+					PoseLandmarker.POSE_CONNECTIONS,
+					{
+						color: '#36454F',
+						lineWidth: 0.2
+					}
+				)
+			}
 		}
 
 		requestAnimationFrame(render)
 	}
 
 	onDestroy(() => {
+		faceLandmarker.close()
+		poseLandmarker.close()
 		audioTrack?.stop()
 		videoTrack?.stop()
 	})
