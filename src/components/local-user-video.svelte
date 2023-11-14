@@ -9,9 +9,16 @@
 		type ILocalVideoTrack
 	} from 'agora-rtc-sdk-ng'
 
-	import { createFaceLandmarker } from '@/lib/ml'
-	import { FaceLandmarker, DrawingUtils } from '@mediapipe/tasks-vision'
-	import type { FaceLandmarker as FaceLandmarkerType } from '@mediapipe/tasks-vision'
+	import { createFaceLandmarker, createPoseLandmarker } from '@/lib/ml'
+	import {
+		FaceLandmarker,
+		PoseLandmarker,
+		DrawingUtils
+	} from '@mediapipe/tasks-vision'
+	import type {
+		FaceLandmarker as FaceLandmarkerType,
+		PoseLandmarker as PoseLandmarkerType
+	} from '@mediapipe/tasks-vision'
 	import { fade } from 'svelte/transition'
 
 	export let user: User
@@ -22,6 +29,7 @@
 	let videoTrack: ILocalVideoTrack | null = null
 
 	let faceLandmarker: FaceLandmarkerType
+	let poseLandmarker: PoseLandmarkerType
 	let drawingUtils: DrawingUtils
 	let lastVideoTime = -1
 
@@ -43,11 +51,13 @@
 		videoTrack = await AgoraRTC.createCameraVideoTrack()
 		audioTrack = await AgoraRTC.createMicrophoneAudioTrack()
 		faceLandmarker = await createFaceLandmarker()
+		poseLandmarker = await createPoseLandmarker()
 	})
 
 	const render = () => {
 		if (
 			!faceLandmarker ||
+			!poseLandmarker ||
 			!video ||
 			!overlay ||
 			!drawingUtils ||
@@ -57,19 +67,29 @@
 			return
 		}
 
-		const timestamp = performance.now()
-		const landmarkerResult = faceLandmarker.detectForVideo(video, timestamp)
-		lastVideoTime = video.currentTime
-		console.log('landmarkerResult', landmarkerResult)
+		overlay.width = video.videoWidth
+		overlay.height = video.videoHeight
 
-		overlay.getContext('2d')?.clearRect(0, 0, overlay.width, overlay.height)
-		for (const landmarks of landmarkerResult.faceLandmarks) {
+		const timestamp = performance.now()
+		const faceLandmarkerResult = faceLandmarker.detectForVideo(video, timestamp)
+		const poseLandmarkerResult = poseLandmarker.detectForVideo(video, timestamp)
+		lastVideoTime = video.currentTime
+
+		for (const landmarks of faceLandmarkerResult.faceLandmarks) {
 			drawingUtils.drawConnectors(
 				landmarks,
 				FaceLandmarker.FACE_LANDMARKS_TESSELATION,
-				{ color: '#36454F', lineWidth: 0.3 }
+				{ color: '#36454F', lineWidth: 1 }
 			)
 		}
+
+		for (const landmarks of poseLandmarkerResult.landmarks) {
+			drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
+				color: '#00FF00',
+				lineWidth: 1
+			})
+		}
+
 		requestAnimationFrame(render)
 	}
 
@@ -91,7 +111,7 @@
 	</video>
 
 	<div
-		class="absolute top-0 left-0 w-full h-full -scale-x-[1]"
+		class="absolute top-0 left-0 w-[640px] h-[480px] -scale-x-[1]"
 		in:fade={{ duration: 500, delay: 500 }}
 	>
 		<canvas
