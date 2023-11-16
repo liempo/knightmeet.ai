@@ -20,7 +20,7 @@ export type AttendanceUserState = {
 }
 
 export type AttendanceMonitorState = {
-	state: 'idle' | 'active' | 'ended'
+	state: 'idle' | 'active' | 'end'
 	data: AttendanceHostData | null
 }
 

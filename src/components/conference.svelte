@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation'
 
 	import { Microphone, Camera, Phone, Crown } from '@/icons'
-	import { Avatar } from '@skeletonlabs/skeleton'
+	import { Avatar, Toast } from '@skeletonlabs/skeleton'
 	import { getToastStore } from '@skeletonlabs/skeleton'
 
 	import { getInitials } from '@/lib/utils'
@@ -14,7 +14,11 @@
 		attendanceStore
 	} from '@/lib/stores'
 	import type { UserData } from '@/lib/kv'
-	import type { MeetingMetadata } from '@/types/app'
+	import type {
+		AttendanceHostData,
+		AttendanceMonitorState,
+		MeetingMetadata
+	} from '@/types/app'
 
 	/*  Agora SDK */
 	import AgoraRTC, {
@@ -63,40 +67,6 @@
 	let rtm = AgoraRTM.createInstance(metadata.appId)
 	let channel = rtm.createChannel(metadata.channel)
 
-	/** Will run when host triggered attendance */
-	$: switch ($attendanceStore.state) {
-		case 'idle':
-			break
-		case 'active':
-			channel
-				.sendMessage({
-					text: JSON.stringify({
-						type: 'attendance_start',
-						value: $attendanceStore.data?.until
-					})
-				})
-				.catch(() => {
-					toastStore.trigger({ message: 'Could not start attendance' })
-				})
-			break
-		case 'ended':
-			channel.sendMessage({
-				text: JSON.stringify({
-					type: 'attendance_end',
-					value: Date.now()
-				})
-			})
-			break
-	}
-
-	$: if ($attendanceStore.data?.users.length == remoteUsers.length) {
-		attendanceStore.update((a) => ({ ...a, state: 'idle' }))
-
-		console.group('Attendance')
-		console.table($attendanceStore.data?.users)
-		console.groupEnd()
-	}
-
 	$: {
 		console.log('localUser', localUser)
 		localAudio?.setEnabled(localUser.audio)
@@ -132,7 +102,25 @@
 
 	let presentFrames = 0
 	let totalFrames = 0
+	let renderPresenceStart = -1
 	let renderPresenceUntil = -1
+
+	/** HOST: Update channel attributes with attendance state */
+	$: rtm
+		.addOrUpdateChannelAttributes(
+			metadata.channel,
+			{
+				attendanceState: JSON.stringify($attendanceStore),
+				attendanceCount: '0'
+			},
+			{ enableNotificationToChannelMembers: true }
+		)
+		.then(() => {
+			console.log('Updated channel attributes', $attendanceStore)
+		})
+		.catch((e) => {
+			console.error('Failed to update channel attributes', e)
+		})
 
 	const renderPresence = () => {
 		if (!$userStore.video) {
@@ -154,26 +142,10 @@
 		) as HTMLCanvasElement
 
 		if (Date.now() > renderPresenceUntil) {
-			const presence = presentFrames / totalFrames
-			channel
-				.sendMessage({
-					text: JSON.stringify({
-						type: 'attendance_save',
-						value: presence
-					})
-				})
-				.then(() => {
-					toastStore.trigger({ message: 'Attendance recorded.' })
-				})
-				.catch(() =>
-					toastStore.trigger({
-						message: 'Could not save attendance',
-						background: 'variant-filled-error'
-					})
-				)
 			presentFrames = 0
 			totalFrames = 0
 			renderPresenceUntil = -1
+			renderPresenceStart = -1
 			overlay.getContext('2d')?.clearRect(0, 0, overlay.width, overlay.height)
 			return
 		}
@@ -274,38 +246,54 @@
 			updateRemoteUser(u, true)
 		})
 
-		channel.on('ChannelMessage', async ({ text }, senderId) => {
-			console.log('ChannelMessage', text, senderId)
-			const { type, value } = JSON.parse(text ?? '{}')
-			switch (type) {
-				//  Member will receive attendance start signal
-				case 'attendance_start':
-					toastStore.trigger({ message: 'Attendance started' })
-					if (senderId !== metadata.uid.toString()) {
-						renderPresenceUntil = value
+		channel.on('AttributesUpdated', async (attributes) => {
+			const attendance: AttendanceMonitorState = JSON.parse(
+				attributes.attendanceState.value
+			)
+
+			const attendanceCount = attributes.attendanceCount
+				? parseInt(attributes.attendanceCount.value)
+				: 0
+
+			if (metadata.uid !== metadata.owner)
+				switch (attendance.state) {
+					case 'idle':
+						break
+					//  Member will receive attendance start signal
+					case 'active':
+						toastStore.trigger({
+							message: 'Ongoing attendance',
+							hideDismiss: true,
+							timeout: attendance.data!.until - Date.now()
+						})
+						renderPresenceStart = attendance.data!.start
+						renderPresenceUntil = attendance.data!.until
 						renderPresence()
 						break
-					}
-
-				// Member will receive attendance end signal
-				// Which will trigger attendance save
-				case 'attendance_end':
-					if (senderId !== metadata.uid.toString()) {
-						renderPresenceUntil = value
-						break
-					}
-
-				// Host will receive member's attendance data
-				case 'attendance_save':
-					if (senderId === metadata.uid.toString()) break
-					attendanceStore.update((a) => {
-						a.data?.users.push({
-							id: parseInt(senderId),
-							presence: value
+					// Member will receive attendance end signal
+					case 'end':
+						if (renderPresenceUntil === -1) break
+						await rtm.addOrUpdateLocalUserAttributes({
+							presence: (presentFrames / totalFrames).toFixed(5)
 						})
-						return a
-					})
-					break
+						await rtm.addOrUpdateChannelAttributes(
+							metadata.channel,
+							{
+								attendanceCount: (attendanceCount + 1).toString()
+							},
+							{ enableNotificationToChannelMembers: true }
+						)
+						renderPresenceUntil = -1 // Stop renderPresence
+						toastStore.trigger({
+							message: 'Attendance recorded',
+							background: 'variant-filled-success'
+						})
+						break
+				}
+			else if (attendanceCount == remoteUsers.length) {
+				toastStore.trigger({
+					message: `Attendance completed (${attendanceCount}/${remoteUsers.length})`
+				})
 			}
 		})
 
@@ -323,7 +311,7 @@
 		channelStore.set(metadata)
 		await client.publish([localAudio, localVideo])
 		await rtm.login({ uid: metadata.uid.toString(), token: metadata.rtmToken })
-		channel.join()
+		await channel.join()
 	})
 
 	onDestroy(() => {

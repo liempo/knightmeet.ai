@@ -54,10 +54,7 @@
 						}`}
 						on:click={() => {
 							if ($attendanceStore.state === 'active') {
-								attendanceStore.update((a) => ({
-									...a,
-									state: 'ended'
-								}))
+								attendanceStore.set({ state: 'end', data: null })
 							} else {
 								startAttendance(60)
 							}
