@@ -10,5 +10,23 @@ export type MeetingMetadata = {
 	appId: string
 	channel: string
 	owner: number
-	token: string
+	rtcToken: string
+	rtmToken: string
+}
+
+export type AttendanceUserState = {
+	id: number
+	presence: number
+}
+
+export type AttendanceMonitorState = {
+	state: 'idle' | 'active' | 'ended'
+	data: AttendanceHostData | null
+}
+
+export type AttendanceHostData = {
+	channel: string
+	start: number
+	until: number
+	users: AttendanceUserState[]
 }

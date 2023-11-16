@@ -6,7 +6,7 @@ import { createChannel, getChannel, setUserData } from '@/lib/kv'
 
 import pkg from 'agora-token'
 import { generateUID } from '@/lib/utils'
-const { RtcTokenBuilder, RtcRole } = pkg
+const { RtcTokenBuilder, RtmTokenBuilder, RtcRole } = pkg
 
 export const load = async ({ params: { channel }, url, cookies }) => {
 	if (channel === env.VITE_AGORA_TEST_CHANNEL) return
@@ -53,25 +53,36 @@ export const actions = {
 					uid,
 					appId,
 					channel,
-					token: env.VITE_AGORA_TEST_TOKEN,
-					owner
+					owner,
+					rtcToken: env.VITE_AGORA_TEST_TOKEN,
+					rtmToken: ''
 				}
 			}
 		}
-		const token = RtcTokenBuilder.buildTokenWithUid(
+
+		const rtcToken = RtcTokenBuilder.buildTokenWithUid(
 			appId,
 			appCertificate,
 			channel,
 			uid,
-			RtcRole.PUBLISHER,
+			owner === uid ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER,
 			600,
 			Math.floor(Date.now() / 1000) + 3600
 		)
-		console.log(`Token generated`, {
+
+		const rtmToken = RtmTokenBuilder.buildToken(
+			appId,
+			appCertificate,
+			uid.toString(),
+			Math.floor(Date.now() / 1000) + 3600
+		)
+
+		console.log(`Tokens generated`, {
 			uid,
 			channel,
-			token,
-			owner
+			owner,
+			rtcToken,
+			rtmToken
 		})
 
 		return {
@@ -79,9 +90,10 @@ export const actions = {
 			body: {
 				uid,
 				appId,
+				owner,
 				channel,
-				token,
-				owner
+				rtcToken,
+				rtmToken
 			}
 		}
 	}

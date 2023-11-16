@@ -4,9 +4,15 @@
 
 	import { Microphone, Camera, Phone, Crown } from '@/icons'
 	import { Avatar } from '@skeletonlabs/skeleton'
+	import { getToastStore } from '@skeletonlabs/skeleton'
 
 	import { getInitials } from '@/lib/utils'
-	import { channelStore, membersStore, userStore } from '@/lib/stores'
+	import {
+		channelStore,
+		membersStore,
+		userStore,
+		attendanceStore
+	} from '@/lib/stores'
 	import type { UserData } from '@/lib/kv'
 	import type { MeetingMetadata } from '@/types/app'
 
@@ -18,6 +24,7 @@
 		type ILocalVideoTrack,
 		type UID
 	} from 'agora-rtc-sdk-ng'
+	import AgoraRTM from 'agora-rtm-sdk'
 
 	/* MediaPipe */
 	import { createFaceLandmarker, createPoseLandmarker } from '@/lib/ml'
@@ -30,6 +37,8 @@
 		FaceLandmarker as FaceLandmarkerType,
 		PoseLandmarker as PoseLandmarkerType
 	} from '@mediapipe/tasks-vision'
+
+	const toastStore = getToastStore()
 
 	export let metadata: MeetingMetadata
 
@@ -51,6 +60,42 @@
 		mode: 'rtc',
 		codec: 'vp8'
 	})
+	let rtm = AgoraRTM.createInstance(metadata.appId)
+	let channel = rtm.createChannel(metadata.channel)
+
+	/** Will run when host triggered attendance */
+	$: switch ($attendanceStore.state) {
+		case 'idle':
+			break
+		case 'active':
+			channel
+				.sendMessage({
+					text: JSON.stringify({
+						type: 'attendance_start',
+						value: $attendanceStore.data?.until
+					})
+				})
+				.catch(() => {
+					toastStore.trigger({ message: 'Could not start attendance' })
+				})
+			break
+		case 'ended':
+			channel.sendMessage({
+				text: JSON.stringify({
+					type: 'attendance_end',
+					value: Date.now()
+				})
+			})
+			break
+	}
+
+	$: if ($attendanceStore.data?.users.length == remoteUsers.length) {
+		attendanceStore.update((a) => ({ ...a, state: 'idle' }))
+
+		console.group('Attendance')
+		console.table($attendanceStore.data?.users)
+		console.groupEnd()
+	}
 
 	$: {
 		console.log('localUser', localUser)
@@ -85,9 +130,19 @@
 		else remoteUsers = [...remoteUsers, user]
 	}
 
-	const render = () => {
+	let presentFrames = 0
+	let totalFrames = 0
+	let renderPresenceUntil = -1
+
+	const renderPresence = () => {
+		if (!$userStore.video) {
+			totalFrames++
+			requestAnimationFrame(renderPresence)
+			return
+		}
+
 		if (!faceLandmarker || !poseLandmarker) {
-			requestAnimationFrame(render)
+			requestAnimationFrame(renderPresence)
 			return
 		}
 		// prettier-ignore
@@ -98,8 +153,33 @@
 			'localVideoOverlay'
 		) as HTMLCanvasElement
 
+		if (Date.now() > renderPresenceUntil) {
+			const presence = presentFrames / totalFrames
+			channel
+				.sendMessage({
+					text: JSON.stringify({
+						type: 'attendance_save',
+						value: presence
+					})
+				})
+				.then(() => {
+					toastStore.trigger({ message: 'Attendance recorded.' })
+				})
+				.catch(() =>
+					toastStore.trigger({
+						message: 'Could not save attendance',
+						background: 'variant-filled-error'
+					})
+				)
+			presentFrames = 0
+			totalFrames = 0
+			renderPresenceUntil = -1
+			overlay.getContext('2d')?.clearRect(0, 0, overlay.width, overlay.height)
+			return
+		}
+
 		if (!video || !overlay) {
-			requestAnimationFrame(render)
+			requestAnimationFrame(renderPresence)
 			return
 		}
 
@@ -109,7 +189,7 @@
 		}
 
 		if (video.currentTime === lastVideoTime) {
-			requestAnimationFrame(render)
+			requestAnimationFrame(renderPresence)
 			return
 		}
 
@@ -120,6 +200,12 @@
 		const faceLandmarkerResult = faceLandmarker.detectForVideo(video, timestamp)
 		const poseLandmarkerResult = poseLandmarker.detectForVideo(video, timestamp)
 		lastVideoTime = video.currentTime
+
+		const isPresent =
+			faceLandmarkerResult.faceLandmarks.length > 0 ||
+			poseLandmarkerResult.landmarks.length > 0
+		if (isPresent) presentFrames++
+		totalFrames++
 
 		if (showTrackingPreview) {
 			for (const landmarks of faceLandmarkerResult.faceLandmarks) {
@@ -145,7 +231,7 @@
 			}
 		}
 
-		requestAnimationFrame(render)
+		requestAnimationFrame(renderPresence)
 	}
 
 	onMount(async () => {
@@ -188,19 +274,56 @@
 			updateRemoteUser(u, true)
 		})
 
+		channel.on('ChannelMessage', async ({ text }, senderId) => {
+			console.log('ChannelMessage', text, senderId)
+			const { type, value } = JSON.parse(text ?? '{}')
+			switch (type) {
+				//  Member will receive attendance start signal
+				case 'attendance_start':
+					toastStore.trigger({ message: 'Attendance started' })
+					if (senderId !== metadata.uid.toString()) {
+						renderPresenceUntil = value
+						renderPresence()
+						break
+					}
+
+				// Member will receive attendance end signal
+				// Which will trigger attendance save
+				case 'attendance_end':
+					if (senderId !== metadata.uid.toString()) {
+						renderPresenceUntil = value
+						break
+					}
+
+				// Host will receive member's attendance data
+				case 'attendance_save':
+					if (senderId === metadata.uid.toString()) break
+					attendanceStore.update((a) => {
+						a.data?.users.push({
+							id: parseInt(senderId),
+							presence: value
+						})
+						return a
+					})
+					break
+			}
+		})
+
 		faceLandmarker = await createFaceLandmarker()
 		poseLandmarker = await createPoseLandmarker()
 
 		await client.join(
 			metadata.appId,
 			metadata.channel,
-			metadata.token,
+			metadata.rtcToken,
 			metadata.uid
 		)
 		;[localAudio, localVideo] = await AgoraRTC.createMicrophoneAndCameraTracks()
 		localVideo?.play('localVideoLive')
 		channelStore.set(metadata)
 		await client.publish([localAudio, localVideo])
+		await rtm.login({ uid: metadata.uid.toString(), token: metadata.rtmToken })
+		channel.join()
 	})
 
 	onDestroy(() => {
@@ -211,6 +334,8 @@
 		localVideo?.close()
 		client.leave()
 		client.removeAllListeners()
+		channel.removeAllListeners()
+		rtm.removeAllListeners()
 	})
 </script>
 
@@ -222,7 +347,6 @@
 				autoplay={true}
 				muted={true}
 				id="localVideoLive"
-				on:loadedmetadata={render}
 			>
 				<track kind="captions" />
 			</video>
@@ -330,16 +454,7 @@
 
 			<button
 				class="btn-icon btn-icon-sm variant-filled-error mr-1"
-				on:click={async () => {
-					remoteUsers = []
-					localAudio?.close()
-					localVideo?.close()
-					faceLandmarker.close()
-					poseLandmarker.close()
-					client.removeAllListeners()
-					await client.leave()
-					goto('/')
-				}}
+				on:click={() => goto('/')}
 			>
 				<Phone />
 			</button>

@@ -5,11 +5,23 @@
 	import Members from '@/components/members-list.svelte'
 	import Banner from '@/components/banner.svelte'
 
-	import { channelStore } from '@/lib/stores'
-	import { AppShell, AppBar, Drawer } from '@skeletonlabs/skeleton'
+	import { AppShell, AppBar, Drawer, Toast } from '@skeletonlabs/skeleton'
 	import { getDrawerStore } from '@skeletonlabs/skeleton'
+	import { channelStore, attendanceStore } from '@/lib/stores'
 
 	const drawerStore = getDrawerStore()
+
+	const startAttendance = (seconds: number) => {
+		attendanceStore.set({
+			state: 'active',
+			data: {
+				channel: $channelStore.channel,
+				start: Date.now(),
+				until: Date.now() + seconds * 1000,
+				users: []
+			}
+		})
+	}
 </script>
 
 <svelte:head>
@@ -34,8 +46,26 @@
 			</svelte:fragment>
 			<svelte:fragment slot="trail">
 				{#if $channelStore && $channelStore.uid === $channelStore.owner}
-					<button class="btn btn-sm variant-filled-tertiary">
-						Start Attendance
+					<button
+						class={`btn btn-sm ${
+							$attendanceStore.state === 'active'
+								? 'variant-filled-error'
+								: 'variant-filled-tertiary'
+						}`}
+						on:click={() => {
+							if ($attendanceStore.state === 'active') {
+								attendanceStore.update((a) => ({
+									...a,
+									state: 'ended'
+								}))
+							} else {
+								startAttendance(60)
+							}
+						}}
+					>
+						{$attendanceStore.state === 'active'
+							? 'Attendance in progress'
+							: 'Start Attendance'}
 					</button>
 				{/if}
 
@@ -48,6 +78,7 @@
 					</button>
 				{/if}
 			</svelte:fragment>
+			<Toast position="br" />
 		</AppBar>
 	</svelte:fragment>
 	<slot />

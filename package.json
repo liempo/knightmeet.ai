@@ -46,6 +46,7 @@
 		"@mediapipe/tasks-vision": "^0.10.7",
 		"@vercel/kv": "^0.2.4",
 		"agora-rtc-sdk-ng": "^4.19.2",
+		"agora-rtm-sdk": "^1.5.1",
 		"agora-token": "^2.0.3"
 	}
 }
