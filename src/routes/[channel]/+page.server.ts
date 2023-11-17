@@ -6,7 +6,7 @@ import { createChannel, getChannel, setUserData } from '@/lib/kv'
 
 import pkg from 'agora-token'
 import { generateUID } from '@/lib/utils'
-const { RtcTokenBuilder, RtcRole } = pkg
+const { RtcTokenBuilder, RtmTokenBuilder, RtcRole } = pkg
 
 export const load = async ({ params: { channel }, url, cookies }) => {
 	if (channel === env.VITE_AGORA_TEST_CHANNEL) return
@@ -24,20 +24,26 @@ export const actions = {
 		const channel = params.channel
 		const appId = env.VITE_AGORA_APP_ID
 		const appCertificate = env.VITE_AGORA_APP_CERTIFICATE
-		const uid = generateUID()
 
-		const name = await request
-			.formData()
-			.then((data) => data.get('name')?.toString())
+		const form = await request.formData()
+		const uid = parseInt(form.get('uid')?.toString() || '') || generateUID()
+
+		const name = form.get('name')?.toString()
 		if (name) await setUserData(uid, name)
 
 		const hosting = cookies.get('hosting') === 'true'
 		cookies.delete('hosting', { path: '/' })
+		let owner = -1
 
-		if (hosting) await createChannel({ name: channel, owner: uid })
+		if (hosting)  {
+			await createChannel({ name: channel, owner: uid })
+			owner = uid
+		}
 		else {
 			const existingData = await getChannel(channel)
 			if (!existingData) throw error(404, 'Meeting not found')
+			// KV doesn't support numbers, so we have to cast it
+			owner = parseInt(`${existingData.owner}`)
 		}
 
 		if (channel === env.VITE_AGORA_TEST_CHANNEL) {
@@ -47,30 +53,47 @@ export const actions = {
 					uid,
 					appId,
 					channel,
-					token: env.VITE_AGORA_TEST_TOKEN,
-					hosting
+					owner,
+					rtcToken: env.VITE_AGORA_TEST_TOKEN,
+					rtmToken: ''
 				}
 			}
 		}
-		const token = RtcTokenBuilder.buildTokenWithUid(
+
+		const rtcToken = RtcTokenBuilder.buildTokenWithUid(
 			appId,
 			appCertificate,
 			channel,
 			uid,
-			RtcRole.PUBLISHER,
+			owner === uid ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER,
 			600,
 			Math.floor(Date.now() / 1000) + 3600
 		)
-		console.log('Token generated for channel', channel, token)
+
+		const rtmToken = RtmTokenBuilder.buildToken(
+			appId,
+			appCertificate,
+			uid.toString(),
+			Math.floor(Date.now() / 1000) + 3600
+		)
+
+		console.log(`Tokens generated`, {
+			uid,
+			channel,
+			owner,
+			rtcToken,
+			rtmToken
+		})
 
 		return {
 			action: 'join',
 			body: {
 				uid,
 				appId,
+				owner,
 				channel,
-				token,
-				hosting
+				rtcToken,
+				rtmToken
 			}
 		}
 	}
