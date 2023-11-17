@@ -5,7 +5,13 @@
 	import Members from '@/components/members-list.svelte'
 	import Banner from '@/components/banner.svelte'
 
-	import { AppShell, AppBar, Drawer, Toast } from '@skeletonlabs/skeleton'
+	import {
+		AppShell,
+		AppBar,
+		Drawer,
+		Toast,
+		Modal
+	} from '@skeletonlabs/skeleton'
 	import { getDrawerStore } from '@skeletonlabs/skeleton'
 	import { channelStore, attendanceStore } from '@/lib/stores'
 
@@ -75,8 +81,9 @@
 					</button>
 				{/if}
 			</svelte:fragment>
-			<Toast position="br" />
 		</AppBar>
 	</svelte:fragment>
 	<slot />
+	<Toast position="br" />
+	<Modal />
 </AppShell>

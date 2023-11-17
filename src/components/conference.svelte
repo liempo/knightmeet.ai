@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte'
 	import { goto } from '$app/navigation'
+	import { onMount, onDestroy } from 'svelte'
 
+	import Attendance from '@/components/attendance.svelte'
 	import { Microphone, Camera, Phone, Crown } from '@/icons'
-	import { Avatar, Toast } from '@skeletonlabs/skeleton'
+	import { Avatar, getModalStore } from '@skeletonlabs/skeleton'
 	import { getToastStore } from '@skeletonlabs/skeleton'
 
 	import { getInitials } from '@/lib/utils'
@@ -13,12 +14,10 @@
 		userStore,
 		attendanceStore
 	} from '@/lib/stores'
+
 	import type { UserData } from '@/lib/kv'
-	import type {
-		AttendanceHostData,
-		AttendanceMonitorState,
-		MeetingMetadata
-	} from '@/types/app'
+	import type { AttendanceMonitorState, MeetingMetadata } from '@/types/app'
+	import type { ModalComponent } from '@skeletonlabs/skeleton'
 
 	/*  Agora SDK */
 	import AgoraRTC, {
@@ -43,6 +42,7 @@
 	} from '@mediapipe/tasks-vision'
 
 	const toastStore = getToastStore()
+	const modalStore = getModalStore()
 
 	export let metadata: MeetingMetadata
 
@@ -291,8 +291,25 @@
 						break
 				}
 			else if (attendanceCount == remoteUsers.length) {
-				toastStore.trigger({
-					message: `Attendance completed (${attendanceCount}/${remoteUsers.length})`
+				let attendanceData: { name: string; presence: string }[] = []
+				for (const member of remoteUsers) {
+					const { name } = getUserData(member.uid)
+					const attributes = await rtm.getUserAttributes(member.uid.toString())
+					const presence = parseFloat(attributes.presence ?? '0')
+					attendanceData.push({
+						name: name,
+						presence: (presence * 100).toFixed(2) + '%'
+					})
+				}
+
+				const attendanceModal: ModalComponent = {
+					ref: Attendance,
+					props: { attendanceData }
+				}
+
+				modalStore.trigger({
+					type: 'component',
+					component: attendanceModal
 				})
 			}
 		})
