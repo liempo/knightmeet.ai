@@ -290,27 +290,33 @@
 						})
 						break
 				}
-			else if (attendanceCount == remoteUsers.length) {
-				let attendanceData: { name: string; presence: string }[] = []
-				for (const member of remoteUsers) {
-					const { name } = getUserData(member.uid)
-					const attributes = await rtm.getUserAttributes(member.uid.toString())
-					const presence = parseFloat(attributes.presence ?? '0')
-					attendanceData.push({
-						name: name,
-						presence: (presence * 100).toFixed(2) + '%'
-					})
-				}
+			else {
+				switch (attendance.state) {
+					case 'end':
+						if (attendanceCount !== remoteUsers.length) break
+						let attendanceData: { name: string; presence: string }[] = []
+						for (const member of remoteUsers) {
+							const { name } = getUserData(member.uid)
+							const attributes = await rtm.getUserAttributes(
+								member.uid.toString()
+							)
+							const presence = parseFloat(attributes.presence ?? '0')
+							attendanceData.push({
+								name: name,
+								presence: (presence * 100).toFixed(2) + '%'
+							})
+						}
 
-				const attendanceModal: ModalComponent = {
-					ref: Attendance,
-					props: { attendanceData }
-				}
+						const attendanceModal: ModalComponent = {
+							ref: Attendance,
+							props: { attendanceData }
+						}
 
-				modalStore.trigger({
-					type: 'component',
-					component: attendanceModal
-				})
+						modalStore.trigger({
+							type: 'component',
+							component: attendanceModal
+						})
+				}
 			}
 		})
 
