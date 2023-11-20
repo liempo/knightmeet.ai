@@ -337,17 +337,19 @@
 		await channel.join()
 	})
 
-	onDestroy(() => {
+	const leave = async () => {
 		remoteUsers = []
 		faceLandmarker.close()
 		poseLandmarker.close()
-		localAudio?.close()
-		localVideo?.close()
-		client.leave()
 		client.removeAllListeners()
 		channel.removeAllListeners()
 		rtm.removeAllListeners()
-	})
+		localAudio?.close()
+		localVideo?.close()
+		await client.leave()
+	}
+
+	onDestroy(async () => await leave())
 </script>
 
 <div class="h-full flex relative">
@@ -465,7 +467,10 @@
 
 			<button
 				class="btn-icon btn-icon-sm variant-filled-error mr-1"
-				on:click={() => goto('/')}
+				on:click={() => {
+					goto('/')
+					leave()
+				}}
 			>
 				<Phone />
 			</button>
