@@ -2,7 +2,7 @@
 	import { page } from '$app/stores'
 
 	import { Members as MembersIcon } from '@/icons'
-	import Members from '@/components/members-list.svelte'
+	import Members from '@/components/members.svelte'
 	import Banner from '@/components/banner.svelte'
 
 	import {
