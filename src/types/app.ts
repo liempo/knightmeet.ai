@@ -25,3 +25,8 @@ export type ChannelMetadata = {
 	rtcToken: string
 	rtmToken: string
 }
+
+export type Attendance = {
+	hostId: number
+	duration: number
+} | null

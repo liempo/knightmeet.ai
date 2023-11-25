@@ -99,6 +99,7 @@
 
 		rtmChannel.on('ChannelMessage', async ({ text }, senderId) => {
 			if (text === undefined) return
+			// TODO: Handle attendance command
 			const attributes = await rtm.getUserAttributes(senderId)
 			const message = {
 				senderId: parseInt(senderId),
@@ -175,16 +176,105 @@
 		await client.publish([localAudioTrack, localVideoTrack])
 	}
 
+	/* Setup ML */
+	// prettier-ignore
+	import {  
+		createFaceLandmarker,
+		createPoseLandmarker 
+	} from '@/lib/ml'
+	import {
+		FaceLandmarker,
+		PoseLandmarker,
+		DrawingUtils
+	} from '@mediapipe/tasks-vision'
+	import type {
+		FaceLandmarker as FaceLandmarkerType,
+		PoseLandmarker as PoseLandmarkerType
+	} from '@mediapipe/tasks-vision'
+
+	let faceLandmarker: FaceLandmarkerType
+	let poseLandmarker: PoseLandmarkerType
+	let localVideoRef: HTMLVideoElement
+	let localOverlayRef: HTMLCanvasElement
+
+	const createLandmarkers = async () => {
+		faceLandmarker = await createFaceLandmarker()
+		poseLandmarker = await createPoseLandmarker()
+	}
+
+	let drawingUtils: DrawingUtils
+	let lastVideoTime = -1
+	const expectedFrameTime = 30
+
+	$: {
+		if (!drawingUtils && localOverlayRef) {
+			const ctx = localOverlayRef.getContext('2d')
+			if (ctx) drawingUtils = new DrawingUtils(ctx)
+		}
+	}
+
+	const render = () => {
+		if (
+			!localVideoRef ||
+			!localOverlayRef ||
+			!faceLandmarker ||
+			!poseLandmarker ||
+			!drawingUtils ||
+			localVideoRef.currentTime === lastVideoTime
+		) {
+			requestAnimationFrame(render)
+			return
+		}
+
+		localOverlayRef.width = localVideoRef.videoWidth
+		localOverlayRef.height = localVideoRef.videoHeight
+
+		const timestamp = performance.now()
+		const faceLandmarkerResult = faceLandmarker.detectForVideo(
+			localVideoRef,
+			timestamp
+		)
+		const poseLandmarkerResult = poseLandmarker.detectForVideo(
+			localVideoRef,
+			timestamp
+		)
+		lastVideoTime = localVideoRef.currentTime
+
+		for (const landmarks of faceLandmarkerResult.faceLandmarks) {
+			drawingUtils.drawConnectors(
+				landmarks,
+				FaceLandmarker.FACE_LANDMARKS_TESSELATION,
+				{ color: '#36454F', lineWidth: 0.2 }
+			)
+		}
+
+		for (const landmarks of poseLandmarkerResult.landmarks) {
+			drawingUtils.drawLandmarks(landmarks, {
+				color: '#36454F',
+				radius: 0.5
+			})
+			drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
+				color: '#36454F',
+				lineWidth: 0.2
+			})
+		}
+
+		setTimeout(() => requestAnimationFrame(render), expectedFrameTime)
+	}
+
 	/* Lifecycle */
 	onMount(async () => {
 		await joinRtmChannel()
 		await joinRtcChannel()
+		await createLandmarkers()
 	})
 
-	onDestroy(() => {
+	onDestroy(async () => {
 		unsubDraft()
 		localAudioTrack?.stop()
 		localVideoTrack?.stop()
+		faceLandmarker.close()
+		poseLandmarker.close()
 		client.leave()
 		rtmChannel.leave()
 		rtm.logout()
@@ -199,6 +289,8 @@
 				autoplay={true}
 				muted={true}
 				id="localVideoLive"
+				bind:this={localVideoRef}
+				on:loadedmetadata={render}
 			>
 				<track kind="captions" />
 			</video>
@@ -207,6 +299,7 @@
 				<canvas
 					class="w-full h-full"
 					id="localVideoOverlay"
+					bind:this={localOverlayRef}
 				/>
 			</div>
 

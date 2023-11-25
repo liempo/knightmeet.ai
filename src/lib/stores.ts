@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store'
 import { localStorageStore } from '@skeletonlabs/skeleton'
-import type { User, Channel, Message } from '@/types/app'
+import type { User, Channel, Message, Attendance } from '@/types/app'
 
 // Current user profile (name, audio, video)
 // export const userStore = writable<User>()
@@ -17,3 +17,5 @@ export const membersStore = writable<User[]>([])
 export const messagesStore = writable<Message[]>([])
 
 export const draftStore = writable<string>('')
+
+export const attendanceStore = writable<Attendance>(null)

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte'
 	import { page } from '$app/stores'
 
 	import {
@@ -16,15 +15,16 @@
 		AppBar,
 		Drawer,
 		Toast,
-		getToastStore
+		getToastStore,
+		getModalStore,
+		getDrawerStore
 	} from '@skeletonlabs/skeleton'
-	import { getDrawerStore } from '@skeletonlabs/skeleton'
 
-	const dispatcher = createEventDispatcher()
+	import { userStore, channelStore, attendanceStore } from '@/lib/stores'
+
 	const drawerStore = getDrawerStore()
 	const toastStore = getToastStore()
-
-	import { userStore, channelStore } from '@/lib/stores'
+	const modalStore = getModalStore()
 </script>
 
 <svelte:head>
@@ -79,9 +79,7 @@
 				{#if $channelStore && $userStore.id === $channelStore.ownerId}
 					<button
 						class={`btn btn-sm ${'variant-filled-secondary'}`}
-						on:click={() => {
-							dispatcher('attendance-start')
-						}}
+						on:click={() => {}}
 					>
 						{'Start Attendance'}
 					</button>
