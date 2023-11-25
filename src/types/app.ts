@@ -11,7 +11,7 @@ export type Channel = {
 	ownerId: number
 }
 
-export type MeetingMetadata = {
+export type ChannelMetadata = {
 	uid: number
 	appId: string
 	channel: string

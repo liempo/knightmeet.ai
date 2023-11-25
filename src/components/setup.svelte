@@ -45,7 +45,7 @@
 	let lastVideoTime = -1
 	let showTrackingPreview = false
 
-	page.subscribe((p) => {
+	const unsubJoinAction = page.subscribe((p) => {
 		if (p.form?.action === 'join' && p.form?.body) {
 			userStore.set({
 				...localUser,
@@ -124,6 +124,7 @@
 	}
 
 	onDestroy(() => {
+		unsubJoinAction()
 		videoTrack?.stop()
 		audioTrack?.stop()
 		faceLandmarker.close()
@@ -144,6 +145,7 @@
 				autoplay={true}
 				muted={true}
 				bind:this={video}
+				on:loadedmetadata={render}
 			>
 				<track kind="captions" />
 			</video>

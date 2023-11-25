@@ -24,7 +24,7 @@
 			<button
 				class="btn variant-filled"
 				on:click={() => {
-					goto(`/${generateChannelName()}?new=true`)
+					goto(`/${generateChannelName()}`)
 				}}
 			>
 				New meeting

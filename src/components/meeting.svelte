@@ -3,8 +3,8 @@
 	import Setup from './setup.svelte'
 	import Conference from './conference.svelte'
 
-	import type { MeetingMetadata } from '@/types/app'
-	let metadata: MeetingMetadata
+	import type { ChannelMetadata } from '@/types/app'
+	let metadata: ChannelMetadata
 	$: metadata = $page.form?.body
 </script>
 
