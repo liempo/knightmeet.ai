@@ -25,16 +25,25 @@
 			: localVideoTrack?.stop()
 	}
 
-	const getMemberName = (userId: string) =>
-		$membersStore.find((m) => m.id === parseInt(userId))?.name || 'Unknown'
+	$: membersStore.set([
+		localUser,
+		...remoteRtcUsers.map((u) => ({
+			id: parseInt(u.uid.toString()),
+			name: getMemberName(u.uid.toString()),
+			audio: u.hasAudio,
+			video: u.hasVideo
+		}))
+	])
 
 	/* Setup Agora RTM */
 	import AgoraRTM from 'agora-rtm-sdk'
 	let rtm = AgoraRTM.createInstance(metadata.appId)
 	let rtmChannel = rtm.createChannel(metadata.channel)
+	let memberNames = new Map<string, string>()
 
-	const getRemoteUserName = async (userId: string) => {
-		return await rtm.getUserAttributes(userId).then((attr) => attr.name)
+	const getMemberName = (uid: string) => {
+		const name = memberNames.get(uid)
+		return name ? name : 'Mysterious Stranger'
 	}
 
 	const joinRtmChannel = async () => {
@@ -96,20 +105,14 @@
 	const joinRtcChannel = async () => {
 		client.on('user-joined', async (user) => {
 			console.log('user-joined', user)
-			const name = await getRemoteUserName(user.uid.toString())
-			membersStore.add({
-				id: parseInt(user.uid.toString()),
-				name: name || 'Unknown',
-				audio: user.hasVideo,
-				video: user.hasAudio
-			})
+			const attributes = await rtm.getUserAttributes(user.uid.toString())
+			if (attributes.name) memberNames.set(user.uid.toString(), attributes.name)
 			updateRemoteRtcUser(user)
 		})
 
 		client.on('user-left', (user) => {
 			console.log('user-left', user)
 			updateRemoteRtcUser(user, true)
-			membersStore.remove(parseInt(user.uid.toString()))
 		})
 
 		client.on('user-published', async (user, mediaType) => {
@@ -119,23 +122,13 @@
 			if (mediaType === 'audio') user.audioTrack?.play()
 			else if (mediaType === 'video')
 				user.videoTrack?.play(`remoteVideoLive-${user.uid}`)
-			membersStore.update(
-				parseInt(user.uid.toString()),
-				user.hasAudio,
-				user.hasVideo
-			)
 		})
 
 		client.on('user-unpublished', (user, mediaType) => {
 			console.log('user-unpublished', user, mediaType)
-			updateRemoteRtcUser(user)
 			if (mediaType === 'audio') user.audioTrack?.stop()
 			else if (mediaType === 'video') user.videoTrack?.stop()
-			membersStore.update(
-				parseInt(user.uid.toString()),
-				user.hasAudio,
-				user.hasVideo
-			)
+			updateRemoteRtcUser(user)
 		})
 
 		await client.join(

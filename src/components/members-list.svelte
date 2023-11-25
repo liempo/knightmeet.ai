@@ -53,8 +53,8 @@
 					/>
 				</span>
 				<span class="flex-auto">{member.name}</span>
-				<span><Camera /></span>
-				<span><Microphone /></span>
+				<span><Camera on={member.video} /></span>
+				<span><Microphone on={member.audio} /></span>
 			</li>
 		{/each}
 	</ul>
