@@ -62,7 +62,7 @@
 	})
 
 	$: {
-		if (localUser.video) videoTrack?.play('localVideo')
+		if (localUser.video) videoTrack?.play(video)
 		else videoTrack?.stop()
 		audioTrack?.setEnabled(localUser.audio)
 		videoTrack?.setEnabled(localUser.video)
@@ -183,6 +183,7 @@
 				placeholder="Enter your name"
 				class="input"
 			/>
+
 			<button
 				type="button"
 				class="btn btn-sm variant-filled-tertiary"

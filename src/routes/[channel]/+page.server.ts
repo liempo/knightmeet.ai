@@ -1,22 +1,14 @@
 import { env } from '$env/dynamic/private'
-import { error, redirect } from '@sveltejs/kit'
 import type { Actions } from './$types'
-
-import { createChannel, getChannel, setUserData } from '@/lib/kv'
 
 import pkg from 'agora-token'
 import { generateUID } from '@/lib/utils'
 const { RtcTokenBuilder, RtmTokenBuilder, RtcRole } = pkg
 
 export const load = async ({ params: { channel }, url, cookies }) => {
-	if (channel === env.VITE_AGORA_TEST_CHANNEL) return
-
 	const _new = url.searchParams.get('new')
-	const existingData = await getChannel(channel)
-	if (_new) {
-		if (existingData) throw redirect(303, `/${channel}`)
-		else cookies.set('hosting', 'true', { path: '/' })
-	} else if (!existingData) throw error(404, 'Meeting not found')
+	if (_new && channel !== env.VITE_AGORA_TEST_CHANNEL)
+		cookies.set('hosting', 'true', { path: '/' })
 }
 
 export const actions = {
@@ -28,47 +20,21 @@ export const actions = {
 		const form = await request.formData()
 		const uid = parseInt(form.get('uid')?.toString() || '') || generateUID()
 
-		const name = form.get('name')?.toString()
-		if (name) await setUserData(uid, name)
-
 		const hosting = cookies.get('hosting') === 'true'
 		cookies.delete('hosting', { path: '/' })
-		let owner = -1
 
-		if (hosting)  {
-			await createChannel({ name: channel, owner: uid })
-			owner = uid
-		}
-		else {
-			const existingData = await getChannel(channel)
-			if (!existingData) throw error(404, 'Meeting not found')
-			// KV doesn't support numbers, so we have to cast it
-			owner = parseInt(`${existingData.owner}`)
-		}
-
-		if (channel === env.VITE_AGORA_TEST_CHANNEL) {
-			console.log('Using test token for channel', channel)
-			return {
-				body: {
-					uid,
-					appId,
-					channel,
-					owner,
-					rtcToken: env.VITE_AGORA_TEST_TOKEN,
-					rtmToken: ''
-				}
-			}
-		}
-
-		const rtcToken = RtcTokenBuilder.buildTokenWithUid(
-			appId,
-			appCertificate,
-			channel,
-			uid,
-			owner === uid ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER,
-			600,
-			Math.floor(Date.now() / 1000) + 3600
-		)
+		const rtcToken =
+			channel === env.VITE_AGORA_TEST_CHANNEL
+				? env.VITE_AGORA_TEST_TOKEN
+				: RtcTokenBuilder.buildTokenWithUid(
+						appId,
+						appCertificate,
+						channel,
+						uid,
+						hosting ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER,
+						600,
+						Math.floor(Date.now() / 1000) + 3600
+				  )
 
 		const rtmToken = RtmTokenBuilder.buildToken(
 			appId,
@@ -80,7 +46,6 @@ export const actions = {
 		console.log(`Tokens generated`, {
 			uid,
 			channel,
-			owner,
 			rtcToken,
 			rtmToken
 		})
@@ -90,7 +55,6 @@ export const actions = {
 			body: {
 				uid,
 				appId,
-				owner,
 				channel,
 				rtcToken,
 				rtmToken

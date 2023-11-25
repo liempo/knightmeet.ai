@@ -15,7 +15,6 @@ export type MeetingMetadata = {
 	uid: number
 	appId: string
 	channel: string
-	ownerId: number
 	rtcToken: string
 	rtmToken: string
 }
