@@ -1,8 +1,14 @@
 <script lang="ts">
+	import { createEventDispatcher } from 'svelte'
 	import { page } from '$app/stores'
 
-	import { Members as MembersIcon } from '@/icons'
+	import {
+		Members as MembersIcon,
+		Chat as ChatIcon,
+		Copy as CopyIcon
+	} from '@/icons'
 	import Members from '@/components/members.svelte'
+	import Chat from '@/components/chat.svelte'
 	import Banner from '@/components/banner.svelte'
 
 	import {
@@ -10,10 +16,13 @@
 		AppBar,
 		Drawer,
 		Toast,
-		Modal
+		getToastStore
 	} from '@skeletonlabs/skeleton'
 	import { getDrawerStore } from '@skeletonlabs/skeleton'
+
+	const dispatcher = createEventDispatcher()
 	const drawerStore = getDrawerStore()
+	const toastStore = getToastStore()
 
 	import { userStore, channelStore } from '@/lib/stores'
 </script>
@@ -29,20 +38,50 @@
 	>
 		{#if $drawerStore.id === 'members'}
 			<Members />
+		{:else if $drawerStore.id == 'chat'}
+			<Chat />
 		{/if}
 	</Drawer>
 	<svelte:fragment slot="header">
-		<AppBar class="shadow-lg">
+		<AppBar
+			gridColumns="grid-cols-3"
+			slotDefault="place-self-center"
+			slotTrail="place-content-end"
+			class="shadow-lg"
+		>
 			<svelte:fragment slot="lead">
 				<a href="/">
 					<Banner />
 				</a>
 			</svelte:fragment>
+
+			{#if $channelStore}
+				<button
+					class="btn btn-sm group hover:variant-soft-surface"
+					on:click={() => {
+						navigator.clipboard.writeText(window.location.href)
+						toastStore.trigger({
+							message: 'Meeting URL copied to clipboard',
+							timeout: 1000,
+							background: 'bg-surface-active-token',
+							hideDismiss: true
+						})
+					}}
+				>
+					{$channelStore.name}
+					<CopyIcon
+						class="w-4 h-4 ml-2 transition ease-in-out duration-300 fill-on-success-token -translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100"
+					/>
+				</button>
+			{/if}
+
 			<svelte:fragment slot="trail">
 				{#if $channelStore && $userStore.id === $channelStore.ownerId}
 					<button
-						class={`btn btn-sm ${'variant-filled-tertiary'}`}
-						on:click={() => {}}
+						class={`btn btn-sm ${'variant-filled-secondary'}`}
+						on:click={() => {
+							dispatcher('attendance-start')
+						}}
 					>
 						{'Start Attendance'}
 					</button>
@@ -55,11 +94,16 @@
 					>
 						<MembersIcon />
 					</button>
+					<button
+						class="btn-icon btn-icon-sm variant-filled"
+						on:click={() => drawerStore.open({ id: 'chat' })}
+					>
+						<ChatIcon />
+					</button>
 				{/if}
 			</svelte:fragment>
 		</AppBar>
 	</svelte:fragment>
 	<slot />
 	<Toast position="br" />
-	<Modal />
 </AppShell>

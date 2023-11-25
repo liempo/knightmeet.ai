@@ -24,3 +24,12 @@ export const Brain = Brain__SvelteComponent_
 
 import Crown__SvelteComponent_ from './crown.svelte'
 export const Crown = Crown__SvelteComponent_
+
+import Chat__SvelteComponent_ from './chat.svelte'
+export const Chat = Chat__SvelteComponent_
+
+import Send__SvelteComponent_ from './send.svelte'
+export const Send = Send__SvelteComponent_
+
+import Copy__SvelteComponent_ from './copy.svelte'
+export const Copy = Copy__SvelteComponent_

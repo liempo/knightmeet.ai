@@ -11,7 +11,13 @@
 	const modalStore = getModalStore()
 
 	/* App State */
-	import { userStore, channelStore, membersStore } from '@/lib/stores'
+	import {
+		userStore,
+		channelStore,
+		membersStore,
+		messagesStore,
+		draftStore
+	} from '@/lib/stores'
 	import type { ChannelMetadata } from '@/types/app'
 
 	export let metadata: ChannelMetadata
@@ -34,6 +40,21 @@
 			video: u.hasVideo
 		}))
 	])
+
+	messagesStore.set([])
+	const unsubDraft = draftStore.subscribe((draft) => {
+		if (!draft) return
+
+		rtmChannel.sendMessage({ text: draft })
+		draftStore.set('')
+		const message = {
+			senderId: metadata.uid,
+			senderName: localUser.name,
+			content: draft,
+			timestamp: Date.now()
+		}
+		messagesStore.update((messages) => [...messages, message])
+	})
 
 	/* Setup Agora RTM */
 	import AgoraRTM from 'agora-rtm-sdk'
@@ -65,16 +86,28 @@
 				createdBy: newOwner.toString()
 			})
 			channelStore.set({
-				...$channelStore,
+				name: metadata.channel,
 				ownerId: newOwner
 			})
 		} else {
 			const oldOwner = parseFloat(attributes.createdBy.value)
 			channelStore.set({
-				...$channelStore,
+				name: metadata.channel,
 				ownerId: oldOwner
 			})
 		}
+
+		rtmChannel.on('ChannelMessage', async ({ text }, senderId) => {
+			if (text === undefined) return
+			const attributes = await rtm.getUserAttributes(senderId)
+			const message = {
+				senderId: parseInt(senderId),
+				senderName: attributes.name ? attributes.name : 'Mysterious Stranger',
+				content: text,
+				timestamp: Date.now()
+			}
+			messagesStore.update((messages) => [...messages, message])
+		})
 	}
 
 	/*  Setup Agora RTC */
@@ -149,6 +182,7 @@
 	})
 
 	onDestroy(() => {
+		unsubDraft()
 		localAudioTrack?.stop()
 		localVideoTrack?.stop()
 		client.leave()
