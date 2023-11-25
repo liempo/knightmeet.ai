@@ -13,21 +13,9 @@
 		Modal
 	} from '@skeletonlabs/skeleton'
 	import { getDrawerStore } from '@skeletonlabs/skeleton'
-	import { channelStore, attendanceStore } from '@/lib/stores'
-
 	const drawerStore = getDrawerStore()
 
-	const startAttendance = (seconds: number) => {
-		attendanceStore.set({
-			state: 'active',
-			data: {
-				channel: $channelStore.channel,
-				start: Date.now(),
-				until: Date.now() + seconds * 1000,
-				users: []
-			}
-		})
-	}
+	import { userStore, channelStore } from '@/lib/stores'
 </script>
 
 <svelte:head>
@@ -51,24 +39,12 @@
 				</a>
 			</svelte:fragment>
 			<svelte:fragment slot="trail">
-				{#if $channelStore && $channelStore.uid === $channelStore.owner}
+				{#if $channelStore && $userStore.id === $channelStore.ownerId}
 					<button
-						class={`btn btn-sm ${
-							$attendanceStore.state === 'active'
-								? 'variant-filled-error'
-								: 'variant-filled-tertiary'
-						}`}
-						on:click={() => {
-							if ($attendanceStore.state === 'active') {
-								attendanceStore.set({ state: 'end', data: null })
-							} else {
-								startAttendance(60)
-							}
-						}}
+						class={`btn btn-sm ${'variant-filled-tertiary'}`}
+						on:click={() => {}}
 					>
-						{$attendanceStore.state === 'active'
-							? 'Attendance in progress'
-							: 'Start Attendance'}
+						{'Start Attendance'}
 					</button>
 				{/if}
 

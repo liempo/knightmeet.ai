@@ -9,7 +9,7 @@
 </script>
 
 {#if metadata}
-	<Conference {metadata} />
+	<Conference />
 {:else}
 	<Setup />
 {/if}

@@ -3,30 +3,19 @@ export type User = {
 	name: string
 	audio: boolean
 	video: boolean
+	presence?: number
+}
+
+export type Channel = {
+	name: string
+	ownerId: number
 }
 
 export type MeetingMetadata = {
 	uid: number
 	appId: string
 	channel: string
-	owner: number
+	ownerId: number
 	rtcToken: string
 	rtmToken: string
-}
-
-export type AttendanceUserState = {
-	id: number
-	presence: number
-}
-
-export type AttendanceMonitorState = {
-	state: 'idle' | 'active' | 'end'
-	data: AttendanceHostData | null
-}
-
-export type AttendanceHostData = {
-	channel: string
-	start: number
-	until: number
-	users: AttendanceUserState[]
 }
