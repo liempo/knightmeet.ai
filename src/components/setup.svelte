@@ -141,8 +141,8 @@
 		joinActionUnsub()
 		videoTrack?.stop()
 		audioTrack?.stop()
-		faceLandmarker.close()
-		poseLandmarker.close()
+		faceLandmarker?.close()
+		poseLandmarker?.close()
 	})
 </script>
 

@@ -3,11 +3,12 @@
 	import { goto } from '$app/navigation'
 
 	/* Components */
-	import { Avatar, getToastStore } from '@skeletonlabs/skeleton'
+	import { Avatar, getToastStore, getDrawerStore } from '@skeletonlabs/skeleton'
 	import { Microphone, Camera, Phone, Crown } from '@/icons'
 	import { getInitials } from '@/lib/utils'
 
 	const toastStore = getToastStore()
+	const drawerStore = getDrawerStore()
 
 	/* App State */
 	import {
@@ -42,7 +43,17 @@
 		}))
 	])
 
-	messagesStore.set([])
+	membersStore.subscribe((members) => {
+		if (!$attendanceHostStore || $attendanceHostStore.action !== 'stop') return
+
+		const membersWithPresence = members.filter(
+			(m) => m.presence && m.id !== localUser.id
+		)
+		console.log('membersWithPresence', membersWithPresence)
+		if (membersWithPresence.length >= members.length / 2)
+			drawerStore.open({ id: 'attendance' })
+	})
+
 	const draftUnsub = draftStore.subscribe((draft) => {
 		if (!draft) return
 
@@ -304,7 +315,12 @@
 
 	let drawingUtils: DrawingUtils
 	let lastVideoTime = -1
+	let presentFrames = 0
+	let expectedTotalFrames = 0
 	const expectedFrameTime = 30
+
+	$: expectedTotalFrames =
+		($attendanceMemberStore?.duration ?? 0) * expectedFrameTime
 
 	$: {
 		if (!drawingUtils && localOverlayRef) {
@@ -318,8 +334,19 @@
 			localOverlayRef
 				.getContext('2d')
 				?.clearRect(0, 0, localVideoRef.videoWidth, localVideoRef.videoHeight)
+			const presence = Math.round((presentFrames / expectedTotalFrames) * 100)
+			console.log(
+				'Rendering attendance results',
+				presence,
+				presentFrames,
+				expectedTotalFrames
+			)
+			rtmChannel.sendMessage({
+				text: `/attendance_save ${presence.toPrecision(2)}`
+			})
 
-			rtmChannel.sendMessage({ text: `/attendance_save ${1}` })
+			expectedTotalFrames = 0
+			presentFrames = 0
 			return // Stop rendering if attendance is over
 		}
 
@@ -348,6 +375,12 @@
 			timestamp
 		)
 		lastVideoTime = localVideoRef.currentTime
+
+		if (
+			faceLandmarkerResult.faceLandmarks.length > 0 ||
+			poseLandmarkerResult.landmarks.length > 0
+		)
+			presentFrames++
 
 		for (const landmarks of faceLandmarkerResult.faceLandmarks) {
 			drawingUtils.drawConnectors(
@@ -383,8 +416,8 @@
 		attendanceHostUnsub()
 		localAudioTrack?.stop()
 		localVideoTrack?.stop()
-		faceLandmarker.close()
-		poseLandmarker.close()
+		faceLandmarker?.close()
+		poseLandmarker?.close()
 		client.leave()
 		rtmChannel.leave()
 		rtm.logout()
@@ -400,6 +433,13 @@
 				muted={true}
 				id="localVideoLive"
 				bind:this={localVideoRef}
+				on:loadedmetadata={() => {
+					if (
+						$attendanceMemberStore &&
+						Date.now() >= $attendanceMemberStore.until
+					)
+						render()
+				}}
 			>
 				<track kind="captions" />
 			</video>

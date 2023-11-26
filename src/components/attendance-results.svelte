@@ -1,44 +1,58 @@
 <script lang="ts">
-	import { getModalStore } from '@skeletonlabs/skeleton'
-	import { Table, tableMapperValues } from '@skeletonlabs/skeleton'
-	import type { TableSource } from '@skeletonlabs/skeleton'
+	import { Close, Arrow } from '@/icons'
 
-	export let attendanceData: { name: string; presence: string }[]
-	const modalStore = getModalStore()
-	const tableSource: TableSource = {
-		head: ['Name', 'Presence'],
-		body: tableMapperValues(attendanceData ?? [], ['name', 'presence'])
-	}
+	import { Avatar } from '@skeletonlabs/skeleton'
+	import { scale } from 'svelte/transition'
+
+	import { channelStore, membersStore } from '@/lib/stores'
+	import { getInitials } from '@/lib/utils'
+
+	import { getDrawerStore } from '@skeletonlabs/skeleton'
+	const drawerStore = getDrawerStore()
+
+	let members = $membersStore.filter(
+		(m) => m.presence && m.id !== $channelStore?.ownerId
+	)
+	let query: string
 </script>
 
-<div class="card w-1/3 p-4 space-y-8">
-	<h3 class="h3">Attendance Results</h3>
-	<Table source={tableSource} />
-
-	<div class="flex justify-end">
+<div class="p-8 space-y-4">
+	<div class="flex justify-between items-center">
+		<h3 class="h3">Attendance results</h3>
 		<button
-			class="btn btn-sm"
-			on:click={() => {
-				const csv = attendanceData
-					.map((row) => {
-						return `${row.name},${row.presence}`
-					})
-					.join('\n')
-				const blob = new Blob([csv], { type: 'text/csv' })
-				const url = window.URL.createObjectURL(blob)
-				const a = document.createElement('a')
-				a.href = url
-				a.download = 'attendance.csv'
-				a.click()
-				a.remove()
-				window.URL.revokeObjectURL(url)
-			}}>Download</button
+			class="btn-icon variant-filled"
+			on:click={() => drawerStore.close()}
 		>
-		<button
-			class="btn btn-sm variant-filled"
-			on:click={() => {
-				modalStore.close()
-			}}>Done</button
-		>
+			<Arrow direction="right" />
+		</button>
 	</div>
+
+	<ul class="list">
+		{#each members as member}
+			<dl class="list-dl bg-surfa">
+				<div>
+					<span>
+						<Avatar
+							initials={getInitials(member.name)}
+							width="w-8"
+							background="bg-surface-600-300-token"
+							border={`border-2 ${
+								(member.presence ?? 0) > 75
+									? 'border-success-800'
+									: 'border-error-700'
+							}`}
+						/>
+					</span>
+
+					<span class="flex-auto">
+						<dt>{member.name}</dt>
+						<dd class="text-sm">
+							Presence score: {member.presence?.toFixed(2)}%
+						</dd>
+					</span>
+				</div>
+				<!-- ... -->
+			</dl>
+		{/each}
+	</ul>
 </div>

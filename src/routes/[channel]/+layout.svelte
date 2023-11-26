@@ -22,6 +22,7 @@
 
 	import { userStore, channelStore, attendanceHostStore } from '@/lib/stores'
 	import AttendanceSetup from '@/components/attendance-setup.svelte'
+	import AttendanceResults from '@/components/attendance-results.svelte'
 
 	const drawerStore = getDrawerStore()
 	const toastStore = getToastStore()
@@ -38,6 +39,8 @@
 	>
 		{#if $drawerStore.id === 'members'}
 			<Members />
+		{:else if $drawerStore.id == 'attendance'}
+			<AttendanceResults />
 		{:else if $drawerStore.id == 'chat'}
 			<Chat />
 		{/if}
