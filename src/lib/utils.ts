@@ -26,4 +26,24 @@ const generateChannelName = () =>
 const validateChannelName = (channel: string) =>
 	/^[0-9a-f-]+$/.test(channel) && channel.length === 11
 
-export { getInitials, generateUID, generateChannelName, validateChannelName }
+// Get formatted short time (e.g. 1h, 5m, 30s)
+const formatShortTime = (elapsed: number): string => {
+	const seconds = Math.floor(elapsed / 1000)
+	const minutes = Math.floor(seconds / 60)
+	const hours = Math.floor(minutes / 60)
+	if (hours > 0) {
+		return `${hours}h`
+	} else if (minutes > 0) {
+		return `${minutes}m`
+	} else {
+		return `${seconds}s`
+	}
+}
+
+export {
+	getInitials,
+	generateUID,
+	generateChannelName,
+	validateChannelName,
+	formatShortTime
+}

@@ -24,6 +24,7 @@
 	import { userStore, channelStore, attendanceHostStore } from '@/lib/stores'
 	import AttendanceSetup from '@/components/attendance-setup.svelte'
 	import AttendanceResults from '@/components/attendance-results.svelte'
+	import Close from '@/icons/close.svelte'
 
 	const drawerStore = getDrawerStore()
 	const toastStore = getToastStore()
@@ -86,9 +87,9 @@
 							class={`group btn btn-sm ${
 								$attendanceHostStore
 									? $attendanceHostStore.action === 'start'
-										? 'variant-filled-success group-hover:variant-filled-error'
-										: 'variant-filled-warning'
-									: 'variant-filled-secondary'
+										? 'variant-soft-success'
+										: 'variant-soft-warning'
+									: 'variant-soft'
 							} [&>*]:pointer-events-none`}
 							use:popup={{
 								event: 'click',
@@ -99,13 +100,17 @@
 										: 'attendanceHover',
 								placement: 'bottom'
 							}}
-							disabled={$attendanceHostStore?.action === 'stop'}
 							on:click={() => {
-								if (
-									$attendanceHostStore &&
-									$attendanceHostStore.action === 'start'
-								)
-									attendanceHostStore.stop()
+								if ($attendanceHostStore)
+									if ($attendanceHostStore.action === 'start')
+										attendanceHostStore.stop()
+									else if ($attendanceHostStore.action === 'stop') {
+										attendanceHostStore.reset()
+										toastStore.trigger({
+											message: 'Cancelled attendance session',
+											background: 'variant-filled-warning'
+										})
+									}
 							}}
 						>
 							{#if $attendanceHostStore}
@@ -113,7 +118,15 @@
 									Attendance on-going
 								{:else if $attendanceHostStore.action === 'stop'}
 									<span>
-										<ProgressRadial width="w-4" />
+										<ProgressRadial
+											class="transition ease-in-out duration-150 group-hover:hidden block"
+											width="w-4"
+										/>
+										<Close
+											class="transition eas duration-150
+											 group-hover:block hidden"
+											width="w-10"
+										/>
 									</span>
 									<span> Wating for results </span>
 								{/if}

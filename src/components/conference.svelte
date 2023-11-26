@@ -3,12 +3,36 @@
 	import { goto } from '$app/navigation'
 
 	/* Components */
-	import { Avatar, getToastStore, getDrawerStore } from '@skeletonlabs/skeleton'
+	import {
+		Avatar,
+		getToastStore,
+		getDrawerStore,
+		ProgressRadial
+	} from '@skeletonlabs/skeleton'
 	import { Microphone, Camera, Phone, Crown } from '@/icons'
-	import { getInitials } from '@/lib/utils'
+	import { getInitials, formatShortTime } from '@/lib/utils'
 
 	const toastStore = getToastStore()
 	const drawerStore = getDrawerStore()
+	let timer: ReturnType<typeof setInterval>
+	let timerString: string = ''
+
+	const startTimer = (until: number) => {
+		timer = setInterval(() => {
+			const elapsed = until - Date.now()
+			if (elapsed <= 0) {
+				timerString = ''
+				clearInterval(timer)
+				return
+			}
+			timerString = `Attendance: ${formatShortTime(elapsed)}`
+		}, 1000)
+	}
+
+	const clearTimer = () => {
+		timerString = ''
+		clearInterval(timer)
+	}
 
 	/* App State */
 	import {
@@ -43,13 +67,12 @@
 		}))
 	])
 
-	membersStore.subscribe((members) => {
+	const presenceUnsub = membersStore.subscribe((members) => {
 		if (!$attendanceHostStore || $attendanceHostStore.action !== 'stop') return
 
 		const membersWithPresence = members.filter(
 			(m) => m.presence && m.id !== localUser.id
 		)
-		console.log('membersWithPresence', membersWithPresence)
 		if (membersWithPresence.length >= members.length / 2) {
 			drawerStore.open({ id: 'attendance' })
 			attendanceHostStore.reset()
@@ -72,23 +95,28 @@
 
 	const attendanceHostUnsub = attendanceHostStore.subscribe(
 		async (attendance) => {
-			if (!attendance) return
+			if (!attendance) {
+				clearTimer()
+				return
+			}
 			switch (attendance.action) {
 				case 'start':
+					const now = Date.now()
 					await rtm.addOrUpdateChannelAttributes(metadata.channel, {
 						attendance: JSON.stringify({
 							hostId: metadata.uid,
 							duration: attendance.duration,
-							until: Date.now() + attendance.duration * 1000
+							start: now,
+							until: now + attendance.duration * 1000
 						})
 					})
 					await rtmChannel.sendMessage({
 						text: `/attendance_start ${attendance.duration}`
 					})
 					toastStore.trigger({
-						message: 'Attendance started',
-						background: 'variant-filled-success'
+						message: 'Attendance triggered'
 					})
+					startTimer(now + attendance.duration * 1000)
 					break
 				case 'stop':
 					await rtm.deleteChannelAttributesByKeys(metadata.channel, [
@@ -98,11 +126,21 @@
 						text: '/attendance_stop'
 					})
 					toastStore.trigger({
-						message: 'Attendance stopped',
-						background: 'variant-filled-error'
+						message: 'Attendance manually stopped'
 					})
+					clearTimer()
 					break
 			}
+		}
+	)
+
+	const attendanceMemberUnsub = attendanceMemberStore.subscribe(
+		async (attendance) => {
+			if (!attendance) {
+				clearTimer()
+				return
+			}
+			if (attendance.until > Date.now()) startTimer(attendance.until)
 		}
 	)
 
@@ -149,15 +187,16 @@
 
 		if (attributes.attendance) {
 			const attendance = JSON.parse(attributes.attendance.value)
+			// If attendance is still on-going, start it
 			if (attendance.hostId !== metadata.uid && Date.now() < attendance.until) {
 				attendanceMemberStore.start(
 					attendance.hostId,
 					attendance.duration,
+					attendance.start,
 					attendance.until
 				)
 				toastStore.trigger({
-					message: 'Attendance started',
-					background: 'variant-filled-success'
+					message: 'Attendance in progress'
 				})
 				render()
 			}
@@ -171,16 +210,15 @@
 					attendanceMemberStore.start(parseInt(senderId), duration)
 					render()
 					toastStore.trigger({
-						message: 'Attendance started',
-						background: 'variant-filled-success'
+						message: 'Attendance started by host'
 					})
 					break
 				case '/attendance_stop':
 					attendanceMemberStore.stop()
 					toastStore.trigger({
-						message: 'Attendance ended',
-						background: 'variant-filled-error'
+						message: 'Attendance ended by host'
 					})
+					clearTimer()
 					break
 				case '/attendance_save':
 					membersStore.update((members) => {
@@ -318,12 +356,7 @@
 	let drawingUtils: DrawingUtils
 	let lastVideoTime = -1
 	let presentFrames = 0
-	let expectedTotalFrames = 0
 	const expectedFrameTime = 30
-
-	$: expectedTotalFrames =
-		($attendanceMemberStore?.duration ?? 0) * expectedFrameTime
-
 	$: {
 		if (!drawingUtils && localOverlayRef) {
 			const ctx = localOverlayRef.getContext('2d')
@@ -336,6 +369,12 @@
 			localOverlayRef
 				.getContext('2d')
 				?.clearRect(0, 0, localVideoRef.videoWidth, localVideoRef.videoHeight)
+
+			const expectedTotalFrames =
+				((($attendanceMemberStore.until - $attendanceMemberStore.start) /
+					1000) *
+					expectedFrameTime) /
+				2
 			const presence = (presentFrames / expectedTotalFrames) * 100
 			console.log(
 				'Rendering attendance results',
@@ -347,7 +386,6 @@
 				text: `/attendance_save ${presence.toPrecision(2)}`
 			})
 
-			expectedTotalFrames = 0
 			presentFrames = 0
 			return // Stop rendering if attendance is over
 		}
@@ -358,9 +396,10 @@
 			!faceLandmarker ||
 			!poseLandmarker ||
 			!drawingUtils ||
+			!localUser.video ||
 			localVideoRef.currentTime === lastVideoTime
 		) {
-			requestAnimationFrame(render)
+			setTimeout(() => requestAnimationFrame(render), 1000 / expectedFrameTime)
 			return
 		}
 
@@ -414,15 +453,20 @@
 	})
 
 	onDestroy(async () => {
+		clearInterval(timer)
 		draftUnsub()
+		presenceUnsub()
 		attendanceHostUnsub()
+		attendanceMemberUnsub()
 		localAudioTrack?.stop()
 		localVideoTrack?.stop()
 		faceLandmarker?.close()
 		poseLandmarker?.close()
-		client.leave()
-		rtmChannel.leave()
-		rtm.logout()
+		client.removeAllListeners()
+		rtm.removeAllListeners()
+		await client.leave()
+		await rtmChannel.leave()
+		await rtm.logout()
 	})
 </script>
 
@@ -527,7 +571,18 @@
 	</section>
 
 	<div class="absolute bottom-2 left-2 right-2 flex justify-center">
-		<div class="rounded-full px-1 variant-soft-surface">
+		<div class="rounded-full variant-soft-surface flex items-center">
+			{#if timerString}
+				<ProgressRadial
+					width="w-4"
+					class="ml-4"
+				/>
+				<p class="p-2 text-xs text-surface-900-50-token">
+					{timerString}
+				</p>
+				<div class="w-px h-6 bg-surface-700-200-token" />
+			{/if}
+
 			<button
 				class="btn-icon"
 				on:click={() => {

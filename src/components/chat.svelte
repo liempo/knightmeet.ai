@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Avatar } from '@skeletonlabs/skeleton'
-	import { getInitials } from '@/lib/utils'
+	import { getInitials, formatShortTime } from '@/lib/utils'
 	import { Arrow, Send } from '@/icons'
 
 	import { getDrawerStore } from '@skeletonlabs/skeleton'
@@ -20,16 +20,7 @@
 	const getElapsed = (timestamp: number): string => {
 		const now = Date.now()
 		const elapsed = now - timestamp
-		const seconds = Math.floor(elapsed / 1000)
-		const minutes = Math.floor(seconds / 60)
-		const hours = Math.floor(minutes / 60)
-		if (hours > 0) {
-			return `${hours}h`
-		} else if (minutes > 0) {
-			return `${minutes}m`
-		} else {
-			return `${seconds}s`
-		}
+		return formatShortTime(elapsed)
 	}
 </script>
 

@@ -29,11 +29,18 @@ const createAttendanceMemberStore = () => {
 	const { subscribe, set, update } = writable<AttendanceMember>(null)
 	return {
 		subscribe,
-		start: (hostId: number, duration: number, until?: number) => {
+		start: (
+			hostId: number,
+			duration: number,
+			start?: number,
+			until?: number
+		) => {
+			const now = Date.now()
 			set({
 				hostId,
 				duration,
-				until: until ?? Date.now() + duration * 1000
+				start: start ?? now,
+				until: until ?? now + duration * 1000
 			})
 		},
 		stop: () => {
@@ -41,7 +48,7 @@ const createAttendanceMemberStore = () => {
 				if (a)
 					return {
 						...a,
-						until: -1
+						until: Date.now()
 					}
 				return a
 			})

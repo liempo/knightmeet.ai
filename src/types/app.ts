@@ -29,6 +29,7 @@ export type ChannelMetadata = {
 export type AttendanceMember = {
 	hostId: number
 	duration: number
+	start: number
 	until: number
 } | null
 
