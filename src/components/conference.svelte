@@ -136,16 +136,18 @@
 
 		if (attributes.attendance) {
 			const attendance = JSON.parse(attributes.attendance.value)
-			attendanceMemberStore.start(
-				attendance.hostId,
-				attendance.duration,
-				attendance.until
-			)
-			toastStore.trigger({
-				message: 'Attendance started',
-				background: 'variant-filled-success'
-			})
-			render()
+			if (attendance.hostId !== metadata.uid && Date.now() < attendance.until) {
+				attendanceMemberStore.start(
+					attendance.hostId,
+					attendance.duration,
+					attendance.until
+				)
+				toastStore.trigger({
+					message: 'Attendance started',
+					background: 'variant-filled-success'
+				})
+				render()
+			}
 		}
 
 		rtmChannel.on('ChannelMessage', async ({ text }, senderId) => {
@@ -228,6 +230,23 @@
 		client.on('user-left', (user) => {
 			console.log('user-left', user)
 			updateRemoteRtcUser(user, true)
+
+			console.log(
+				'attendanceMemberStore',
+				$attendanceMemberStore,
+				$attendanceMemberStore &&
+					user.uid.toString() === $attendanceMemberStore.hostId.toString()
+			)
+			if (
+				$attendanceMemberStore &&
+				user.uid.toString() === $attendanceMemberStore.hostId.toString()
+			) {
+				attendanceMemberStore.stop()
+				toastStore.trigger({
+					message: 'Attendance ended, host left',
+					background: 'variant-filled-error'
+				})
+			}
 		})
 
 		client.on('user-published', async (user, mediaType) => {
