@@ -50,8 +50,10 @@
 			(m) => m.presence && m.id !== localUser.id
 		)
 		console.log('membersWithPresence', membersWithPresence)
-		if (membersWithPresence.length >= members.length / 2)
+		if (membersWithPresence.length >= members.length / 2) {
 			drawerStore.open({ id: 'attendance' })
+			attendanceHostStore.reset()
+		}
 	})
 
 	const draftUnsub = draftStore.subscribe((draft) => {
@@ -334,7 +336,7 @@
 			localOverlayRef
 				.getContext('2d')
 				?.clearRect(0, 0, localVideoRef.videoWidth, localVideoRef.videoHeight)
-			const presence = Math.round((presentFrames / expectedTotalFrames) * 100)
+			const presence = (presentFrames / expectedTotalFrames) * 100
 			console.log(
 				'Rendering attendance results',
 				presence,
@@ -401,7 +403,7 @@
 			})
 		}
 
-		setTimeout(() => requestAnimationFrame(render), expectedFrameTime)
+		setTimeout(() => requestAnimationFrame(render), 1000 / expectedFrameTime)
 	}
 
 	/* Lifecycle */

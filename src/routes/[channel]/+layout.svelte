@@ -17,7 +17,8 @@
 		Toast,
 		popup,
 		getToastStore,
-		getDrawerStore
+		getDrawerStore,
+		ProgressRadial
 	} from '@skeletonlabs/skeleton'
 
 	import { userStore, channelStore, attendanceHostStore } from '@/lib/stores'
@@ -83,8 +84,10 @@
 					<div class="flex flex-row items-stretch">
 						<button
 							class={`group btn btn-sm ${
-								$attendanceHostStore && $attendanceHostStore.action === 'start'
-									? 'variant-filled-success group-hover:variant-filled-error'
+								$attendanceHostStore
+									? $attendanceHostStore.action === 'start'
+										? 'variant-filled-success group-hover:variant-filled-error'
+										: 'variant-filled-warning'
 									: 'variant-filled-secondary'
 							} [&>*]:pointer-events-none`}
 							use:popup={{
@@ -96,6 +99,7 @@
 										: 'attendanceHover',
 								placement: 'bottom'
 							}}
+							disabled={$attendanceHostStore?.action === 'stop'}
 							on:click={() => {
 								if (
 									$attendanceHostStore &&
@@ -104,8 +108,15 @@
 									attendanceHostStore.stop()
 							}}
 						>
-							{#if $attendanceHostStore && $attendanceHostStore.action === 'start'}
-								Attendance on-going
+							{#if $attendanceHostStore}
+								{#if $attendanceHostStore.action === 'start'}
+									Attendance on-going
+								{:else if $attendanceHostStore.action === 'stop'}
+									<span>
+										<ProgressRadial width="w-4" />
+									</span>
+									<span> Wating for results </span>
+								{/if}
 							{:else}
 								Start Attendance
 							{/if}
