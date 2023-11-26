@@ -8,7 +8,15 @@
 	import { Microphone, Camera, Brain } from '@/icons'
 	import { Avatar } from '@skeletonlabs/skeleton'
 
-	import { userStore } from '@/lib/stores'
+	import {
+		attendanceHostStore,
+		attendanceMemberStore,
+		channelStore,
+		draftStore,
+		membersStore,
+		messagesStore,
+		userStore
+	} from '@/lib/stores'
 	import { getInitials } from '@/lib/utils'
 
 	import AgoraRTC, {
@@ -45,7 +53,7 @@
 	let lastVideoTime = -1
 	let showTrackingPreview = false
 
-	const unsubJoinAction = page.subscribe((p) => {
+	const joinActionUnsub = page.subscribe((p) => {
 		if (p.form?.action === 'join' && p.form?.body) {
 			userStore.set({
 				...localUser,
@@ -55,6 +63,12 @@
 	})
 
 	onMount(async () => {
+		channelStore.set(null)
+		membersStore.set([])
+		messagesStore.set([])
+		draftStore.set('')
+		attendanceHostStore.reset()
+		attendanceMemberStore.reset()
 		videoTrack = await AgoraRTC.createCameraVideoTrack()
 		audioTrack = await AgoraRTC.createMicrophoneAudioTrack()
 		faceLandmarker = await createFaceLandmarker()
@@ -124,7 +138,7 @@
 	}
 
 	onDestroy(() => {
-		unsubJoinAction()
+		joinActionUnsub()
 		videoTrack?.stop()
 		audioTrack?.stop()
 		faceLandmarker.close()

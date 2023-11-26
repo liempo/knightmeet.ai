@@ -3,12 +3,11 @@
 	import { goto } from '$app/navigation'
 
 	/* Components */
-	import { Avatar, getModalStore, getToastStore } from '@skeletonlabs/skeleton'
+	import { Avatar, getToastStore } from '@skeletonlabs/skeleton'
 	import { Microphone, Camera, Phone, Crown } from '@/icons'
 	import { getInitials } from '@/lib/utils'
 
 	const toastStore = getToastStore()
-	const modalStore = getModalStore()
 
 	/* App State */
 	import {
@@ -16,7 +15,9 @@
 		channelStore,
 		membersStore,
 		messagesStore,
-		draftStore
+		draftStore,
+		attendanceHostStore,
+		attendanceMemberStore
 	} from '@/lib/stores'
 	import type { ChannelMetadata } from '@/types/app'
 
@@ -42,7 +43,7 @@
 	])
 
 	messagesStore.set([])
-	const unsubDraft = draftStore.subscribe((draft) => {
+	const draftUnsub = draftStore.subscribe((draft) => {
 		if (!draft) return
 
 		rtmChannel.sendMessage({ text: draft })
@@ -55,6 +56,42 @@
 		}
 		messagesStore.update((messages) => [...messages, message])
 	})
+
+	const attendanceHostUnsub = attendanceHostStore.subscribe(
+		async (attendance) => {
+			if (!attendance) return
+			switch (attendance.action) {
+				case 'start':
+					await rtm.addOrUpdateChannelAttributes(metadata.channel, {
+						attendance: JSON.stringify({
+							hostId: metadata.uid,
+							duration: attendance.duration,
+							until: Date.now() + attendance.duration * 1000
+						})
+					})
+					await rtmChannel.sendMessage({
+						text: `/attendance_start ${attendance.duration}`
+					})
+					toastStore.trigger({
+						message: 'Attendance started',
+						background: 'variant-filled-success'
+					})
+					break
+				case 'stop':
+					await rtm.deleteChannelAttributesByKeys(metadata.channel, [
+						'attendance'
+					])
+					await rtmChannel.sendMessage({
+						text: '/attendance_stop'
+					})
+					toastStore.trigger({
+						message: 'Attendance stopped',
+						background: 'variant-filled-error'
+					})
+					break
+			}
+		}
+	)
 
 	/* Setup Agora RTM */
 	import AgoraRTM from 'agora-rtm-sdk'
@@ -82,7 +119,7 @@
 		console.log('Channel attributes', attributes)
 		if (!attributes.createdBy) {
 			const newOwner = metadata.uid
-			await rtm.setChannelAttributes(metadata.channel, {
+			await rtm.addOrUpdateChannelAttributes(metadata.channel, {
 				createdBy: newOwner.toString()
 			})
 			channelStore.set({
@@ -97,17 +134,61 @@
 			})
 		}
 
+		if (attributes.attendance) {
+			const attendance = JSON.parse(attributes.attendance.value)
+			attendanceMemberStore.start(
+				attendance.hostId,
+				attendance.duration,
+				attendance.until
+			)
+			toastStore.trigger({
+				message: 'Attendance started',
+				background: 'variant-filled-success'
+			})
+			render()
+		}
+
 		rtmChannel.on('ChannelMessage', async ({ text }, senderId) => {
-			if (text === undefined) return
-			// TODO: Handle attendance command
-			const attributes = await rtm.getUserAttributes(senderId)
-			const message = {
-				senderId: parseInt(senderId),
-				senderName: attributes.name ? attributes.name : 'Mysterious Stranger',
-				content: text,
-				timestamp: Date.now()
+			if (!text) return
+			switch (text.split(' ')[0]) {
+				case '/attendance_start':
+					const duration = parseInt(text.split(' ')[1])
+					attendanceMemberStore.start(parseInt(senderId), duration)
+					render()
+					toastStore.trigger({
+						message: 'Attendance started',
+						background: 'variant-filled-success'
+					})
+					break
+				case '/attendance_stop':
+					attendanceMemberStore.stop()
+					toastStore.trigger({
+						message: 'Attendance ended',
+						background: 'variant-filled-error'
+					})
+					break
+				case '/attendance_save':
+					membersStore.update((members) => {
+						const presence = parseInt(text.split(' ')[1])
+						const index = members.findIndex((m) => m.id === parseInt(senderId))
+						if (index > -1) members[index].presence = presence
+						return members
+					})
+					break
+
+				default:
+					const attributes = await rtm.getUserAttributes(senderId)
+					const message = {
+						senderId: parseInt(senderId),
+						senderName: attributes.name
+							? attributes.name
+							: 'Mysterious Stranger',
+						content: text,
+						timestamp: Date.now()
+					}
+					messagesStore.update((messages) => [...messages, message])
+					break
 			}
-			messagesStore.update((messages) => [...messages, message])
 		})
 	}
 
@@ -214,6 +295,15 @@
 	}
 
 	const render = () => {
+		if ($attendanceMemberStore && Date.now() >= $attendanceMemberStore.until) {
+			localOverlayRef
+				.getContext('2d')
+				?.clearRect(0, 0, localVideoRef.videoWidth, localVideoRef.videoHeight)
+
+			rtmChannel.sendMessage({ text: `/attendance_save ${1}` })
+			return // Stop rendering if attendance is over
+		}
+
 		if (
 			!localVideoRef ||
 			!localOverlayRef ||
@@ -270,7 +360,8 @@
 	})
 
 	onDestroy(async () => {
-		unsubDraft()
+		draftUnsub()
+		attendanceHostUnsub()
 		localAudioTrack?.stop()
 		localVideoTrack?.stop()
 		faceLandmarker.close()
@@ -290,7 +381,6 @@
 				muted={true}
 				id="localVideoLive"
 				bind:this={localVideoRef}
-				on:loadedmetadata={render}
 			>
 				<track kind="captions" />
 			</video>

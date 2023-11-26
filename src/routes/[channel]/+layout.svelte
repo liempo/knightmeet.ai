@@ -15,16 +15,16 @@
 		AppBar,
 		Drawer,
 		Toast,
+		popup,
 		getToastStore,
-		getModalStore,
 		getDrawerStore
 	} from '@skeletonlabs/skeleton'
 
-	import { userStore, channelStore, attendanceStore } from '@/lib/stores'
+	import { userStore, channelStore, attendanceHostStore } from '@/lib/stores'
+	import AttendanceSetup from '@/components/attendance-setup.svelte'
 
 	const drawerStore = getDrawerStore()
 	const toastStore = getToastStore()
-	const modalStore = getModalStore()
 </script>
 
 <svelte:head>
@@ -77,12 +77,50 @@
 
 			<svelte:fragment slot="trail">
 				{#if $channelStore && $userStore.id === $channelStore.ownerId}
-					<button
-						class={`btn btn-sm ${'variant-filled-secondary'}`}
-						on:click={() => {}}
-					>
-						{'Start Attendance'}
-					</button>
+					<div class="flex flex-row items-stretch">
+						<button
+							class={`group btn btn-sm ${
+								$attendanceHostStore && $attendanceHostStore.action === 'start'
+									? 'variant-filled-success group-hover:variant-filled-error'
+									: 'variant-filled-secondary'
+							} [&>*]:pointer-events-none`}
+							use:popup={{
+								event: 'click',
+								target:
+									$attendanceHostStore &&
+									$attendanceHostStore.action === 'start'
+										? ''
+										: 'attendanceHover',
+								placement: 'bottom'
+							}}
+							on:click={() => {
+								if (
+									$attendanceHostStore &&
+									$attendanceHostStore.action === 'start'
+								)
+									attendanceHostStore.stop()
+							}}
+						>
+							{#if $attendanceHostStore && $attendanceHostStore.action === 'start'}
+								Attendance on-going
+							{:else}
+								Start Attendance
+							{/if}
+						</button>
+
+						<div data-popup="attendanceHover">
+							<AttendanceSetup
+								on:attendancestart={({ detail: duration }) => {
+									if (!$userStore.id) return
+									if (duration <= 0) attendanceHostStore.stop()
+									attendanceHostStore.start($userStore.id, duration)
+									setTimeout(() => {
+										attendanceHostStore.stop()
+									}, duration * 1000)
+								}}
+							/>
+						</div>
+					</div>
 				{/if}
 
 				{#if $channelStore}

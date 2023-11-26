@@ -16,7 +16,7 @@ export type Message = {
 export type Channel = {
 	name: string
 	ownerId: number
-}
+} | null
 
 export type ChannelMetadata = {
 	uid: number
@@ -26,7 +26,14 @@ export type ChannelMetadata = {
 	rtmToken: string
 }
 
-export type Attendance = {
+export type AttendanceMember = {
+	hostId: number
+	duration: number
+	until: number
+} | null
+
+export type AttendanceHost = {
+	action: 'start' | 'stop'
 	hostId: number
 	duration: number
 } | null

@@ -14,6 +14,7 @@
 		draft = draft.trim()
 		if (!draft) return
 		draftStore.set(draft)
+		draft = ''
 	}
 
 	const getElapsed = (timestamp: number): string => {
@@ -45,7 +46,7 @@
 
 	<div class="grow flex flex-col items-stretch justify-between gap-8">
 		<!-- Conversation -->
-		<section class="overflow-y-auto space-y-4 flex-1">
+		<section class="overflow-y-auto space-y-4 flex-1 py-4">
 			{#each $messagesStore as message}
 				{#if message.senderId !== $userStore.id}
 					<div class="grid grid-cols-[auto_1fr] gap-2">
@@ -82,7 +83,7 @@
 		</section>
 
 		<!-- Prompt -->
-		<section class="shrink-0">
+		<section class="shrink-0 py-4">
 			<div
 				class="input-group input-group-divider grid-cols-[auto_1fr_auto] rounded-container-token"
 			>
