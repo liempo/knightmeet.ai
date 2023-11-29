@@ -1,8 +1,7 @@
 <script lang="ts">
-	import { Close, Arrow } from '@/icons'
+	import { Arrow } from '@/icons'
 
 	import { Avatar } from '@skeletonlabs/skeleton'
-	import { scale } from 'svelte/transition'
 
 	import { channelStore, membersStore } from '@/lib/stores'
 	import { getInitials } from '@/lib/utils'
@@ -13,6 +12,27 @@
 	let members = $membersStore.filter(
 		(m) => m.presence && m.id !== $channelStore?.ownerId
 	)
+
+	const download = () => {
+		const csv = [
+			['Name', 'Presence score'],
+			...members.map((m) => [m.name, m.presence?.toFixed(2) + '%'])
+		]
+			.map((e) => e.join(','))
+			.join('\n')
+
+		const blob = new Blob([csv], { type: 'text/csv' })
+		const url = window.URL.createObjectURL(blob)
+
+		const a = document.createElement('a')
+		a.setAttribute('hidden', '')
+		a.setAttribute('href', url)
+		a.setAttribute('download', 'attendance.csv')
+		document.body.appendChild(a)
+		a.click()
+		document.body.removeChild(a)
+	}
+
 	let query: string
 </script>
 
@@ -55,4 +75,13 @@
 			</dl>
 		{/each}
 	</ul>
+
+	<div class="flex justify-end">
+		<button
+			class="btn btn-sm variant-soft"
+			on:click={download}
+		>
+			Export as CSV
+		</button>
+	</div>
 </div>

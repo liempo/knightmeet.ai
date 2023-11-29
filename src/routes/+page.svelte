@@ -17,7 +17,7 @@
 		<div class="h1">
 			<Banner />
 		</div>
-		<p class="text">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
+		<p class="text pb-12">Colegio de San Juan de Letran - Calamba</p>
 		<section
 			class="gap-2 flex sm:items-center justify-evenly flex-col sm:flex-row sm:gap-4"
 		>
