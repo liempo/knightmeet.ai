@@ -24,10 +24,17 @@
 		const blob = new Blob([csv], { type: 'text/csv' })
 		const url = window.URL.createObjectURL(blob)
 
+		// filename as current date and time formmated as YYYY-MM-DD_HHMMSS
+		const filename = new Date()
+			.toISOString()
+			.replace(/[-:]/g, '')
+			.replace('T', '_')
+			.replace(/\..+/, '')
+
 		const a = document.createElement('a')
 		a.setAttribute('hidden', '')
 		a.setAttribute('href', url)
-		a.setAttribute('download', 'attendance.csv')
+		a.setAttribute('download', `${filename}.csv`)
 		document.body.appendChild(a)
 		a.click()
 		document.body.removeChild(a)
