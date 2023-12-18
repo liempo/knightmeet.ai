@@ -210,7 +210,7 @@
 					attendanceMemberStore.start(parseInt(senderId), duration)
 					render()
 					toastStore.trigger({
-						message: 'Attendance started by host'
+						message: 'Attendance started. Please open your camera.'
 					})
 					break
 				case '/attendance_stop':
