@@ -74,7 +74,7 @@
 					<span class="flex-auto">
 						<dt>{member.name}</dt>
 						<dd class="text-sm">
-							Presence score: {member.presence?.toFixed(2)}%
+							{member.presence && member.presence > 50 ? 'Present' : 'Absent'}
 						</dd>
 					</span>
 				</div>
