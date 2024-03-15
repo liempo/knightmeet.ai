@@ -16,7 +16,10 @@
 	const download = () => {
 		const csv = [
 			['Name', 'Presence score'],
-			...members.map((m) => [m.name, m.presence?.toFixed(2) + '%'])
+			...members.map((m) => [
+				m.name,
+				m.presence && m.presence > 50 ? 'Present' : 'Absent'
+			])
 		]
 			.map((e) => e.join(','))
 			.join('\n')
